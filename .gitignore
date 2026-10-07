@@ -1,0 +1,43 @@
+# --- secrets / credentials ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.crt
+*credentials*.json
+*-sa-key*.json
+secrets/
+.npmrc
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+
+# --- local AI tooling (ai-toolkit, Claude Code, Gemini/Antigravity) ---
+.claude/
+.agents/
+.gemini/
+.mcp.json
+.reviews/
+CLAUDE.md
+AGENTS.md
+.devcontainer/
+docs/discovery/
+docs/spec/progress.md
+
+# --- common ---
+*.log
+.DS_Store
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# --- node / typescript ---
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
