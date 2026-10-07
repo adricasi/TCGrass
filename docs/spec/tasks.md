@@ -1,0 +1,227 @@
+# Tasks: TCGrass
+
+- Status: Draft <!-- Draft | In review | Approved -->
+- Last updated: 2026-10-07 (spec-reviewer fixes applied)
+
+Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
+Order = implementation order. Each task is a small vertical slice (≤ ~1 day), references
+the requirements it serves, and has an objective "Done when". 👤 = steps only the human can
+do (create/destroy infrastructure, deploy, secrets, image generation, field test).
+
+Time budget: ≈ 8 h of build (product.md). Estimates below: M1–M3 ≈ 9.5 h, i.e. **over
+budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list or Sat morning).
+Checkpoints: hour 2 → inference path chosen (else Ollama fallback); **hour 8 → apply the cut
+list**; Sat 2026-10-10 noon → field test regardless of state; Sun 2026-10-11 18:00 PDT → submitted.
+
+- **Minimum submittable**: T-001–T-006 + T-012 (capture, reveal, binder; ≈ 6.5 h).
+- **Needed for the field-test trade metric**: T-007–T-009 (Must, but cuttable for submission).
+- **Cut list, in order**: T-010 (daily pack) → AC-009.6 sent-offers screen → UI component
+  tests → T-011 backups and load script → T-013 install (keep the AC-013.2 hint).
+
+## Milestone 1: Walking skeleton (Wed night – Thu morning)
+- [ ] T-001: Inference client + identification spike
+  - Estimate: 1 h
+  - Requirements: REQ-003 (AC-003.4, 003.8, 003.9), REQ-012
+  - Depends on: —
+  - Scope: copy `~/ideas/tcgrass/everyday-nature.draft.yaml` to
+    `expansions/everyday-nature/expansion.yaml`; `src/shared/` zod schemas for the expansion
+    file and the model answer; `src/server/identify/` OpenAI-compatible client (`fetch`, 30-s
+    `AbortSignal.timeout`, prompt from the catalogue); `src/server/config.ts` env parsing;
+    `scripts/spike-identify.ts` (folder of labelled photos → accuracy report).
+    👤 smoke-test DO serverless Gemma with one image; if it fails, create a GPU Droplet with
+    vLLM (`--api-key`, firewall) or start Ollama locally; take 20 labelled photos (12 catalogue,
+    5 non-catalogue, 3 screen/print); check request logging is off on a self-hosted server
+    (AC-004.4); for DO serverless, look up its data terms (Q-9).
+  - Done when: unit tests for AC-003.8, AC-003.9, AC-012.1, AC-012.2 pass with a fake
+    endpoint; the spike report shows ≥ 80 % correct outcomes and 100 % parseable (cards that
+    fail are swapped in the YAML); screen rejection rate recorded (a miss becomes a stated
+    limitation); Q-7 resolved and the chosen path + model id recorded in design.md.
+
+- [ ] T-002a: Local skeleton: camera photo → API → Gemma → result on screen
+  - Estimate: 1 h
+  - Requirements: REQ-003 (AC-003.1–003.3, 003.9, 003.10, 003.12), REQ-012, NFR-001, NFR-007
+  - Depends on: T-001
+  - Scope: Hono app (`src/server/`) with `/healthz`, security headers + CSP, pino JSON logs
+    (stdout + file) with redaction and request id, body limit + magic-byte check, in-flight
+    cap, temporary `POST /api/captures` returning the identification outcome (no DB yet);
+    Vite + Preact PWA (`web/`) with camera preview, permission-denied message, canvas
+    downscale ≤ 1024 px, result text; tsconfig/ESLint split for Node and DOM.
+  - Done when: tests for AC-003.3 (downscale size), AC-003.10, AC-003.12 and the
+    log-redaction rule pass; on the laptop (localhost) a photo of an oak returns `oak`.
+
+- [ ] T-002b: Deploy skeleton to the Droplet over HTTPS
+  - Estimate: 1 h
+  - Requirements: NFR-001, NFR-011, AC-004.4
+  - Depends on: T-002a
+  - Scope: Dockerfile (non-root, read-only rootfs, current Node LTS), `compose.yaml` (Caddy +
+    API, API port unpublished, volume for DB + logs), `Caddyfile` using `PUBLIC_HOSTNAME`;
+    `.env.example`. 👤-approved: add PWA build + Docker build to `.github/workflows/`
+    (do-not-touch area). 👤 create the Droplet (unattended-upgrades on), Volume, Reserved IP
+    and Cloud Firewall (80/443 public, 22 from own IP), tag them per ADR 0002, check the
+    sslip.io PSL question, put `.env` on it, `docker compose up -d --build`.
+  - Done when: CI green; on a real phone `https://<reserved-ip>.sslip.io` shows the camera and
+    a photo of an oak returns `oak`; `curl -I http://…` returns 301/308 to https.
+
+## Milestone 2: Collect (Thu)
+- [ ] T-003: Database + expansion seed command
+  - Estimate: 1 h
+  - Requirements: REQ-001, AC-012.3
+  - Depends on: T-002a
+  - Scope: better-sqlite3 setup (WAL, busy_timeout), migrations runner + first migration
+    (all tables in design.md), `npm run seed -- <dir> [--placeholders]`, placeholder SVG per
+    category, `GET /api/expansion`, `/cards/:expansionId/:cardId.png`, `ACTIVE_EXPANSION`;
+    test fixture expansion in `test/fixtures/expansions/`; startup check
+    for the active expansion; 👤 run the seed in prod after deploy.
+  - Done when: tests for AC-001.1–001.7 and AC-012.3 pass; seeding `everyday-nature` with
+    `--placeholders` succeeds; `GET /api/expansion` returns 15 cards with odds.
+
+- [ ] T-004: Anonymous players + auth
+  - Estimate: 0.75 h
+  - Requirements: REQ-002, REQ-013 (AC-013.2)
+  - Depends on: T-003
+  - Scope: `POST /api/players`, `GET /api/me`, bearer-secret middleware (SHA-256 lookup),
+    friend-code generator with collision retry, per-client-IP creation limit (from Caddy's
+    `X-Forwarded-For`); PWA first-run screen (iOS install hint, 16+ notice, photos deleted,
+    name input), secret in localStorage, API client attaching the header, "profile not
+    found → create new" screen on 401.
+  - Done when: tests for AC-002.1–002.10 and AC-013.2 pass;
+    reopening the app on the phone resumes the same player.
+
+- [ ] T-005: Capture → mint → instant reveal
+  - Estimate: 1.5 h
+  - Requirements: REQ-003, REQ-004, REQ-005, REQ-006
+  - Depends on: T-004
+  - Scope: replace the temporary capture route: authenticated, rate limit 10/60 s, decision
+    order (invalid → none, screen, threshold), `crypto` rarity roll from expansion odds,
+    mint in a transaction, photo dropped in `finally`; reveal screen with art, rarity frames
+    (Common/Rare static, Epic/Legendary animated foil, label + color), plain-text flavor line
+    truncated to 140 before storing; messages for none/screen/retry.
+  - Done when: tests for AC-003.5–003.7, 003.11, AC-004.1–004.3, AC-005.1–005.3,
+    AC-006.1–006.4 pass; a photo on the phone produces a revealed card stored in the DB.
+
+- [ ] T-006: Binder + odds view
+  - Estimate: 0.75 h
+  - Requirements: REQ-007, REQ-005 (AC-005.4)
+  - Depends on: T-005
+  - Scope: `GET /api/binder`; binder screen (owned with counts per rarity, silhouettes for
+    missing, `n / 15`), card detail with instances and lock state, odds screen; bottom
+    navigation (Capture · Binder · Friends · Inbox).
+  - Done when: tests for AC-007.1–007.3 and AC-005.4 pass; binder correct on the phone after
+    3 captures.
+
+## Milestone 3: Social (Fri)
+- [ ] T-007: Friend requests + friends' binders
+  - Estimate: 1 h
+  - Requirements: REQ-008
+  - Depends on: T-006
+  - Scope: friend-request endpoints, unknown-code limit, `GET /api/friends`,
+    `GET /api/friends/:friendCode/binder`, `GET /api/inbox` (friend-request part); profile
+    screen with friend code + share/copy, add-friend form, friends list, friend binder,
+    inbox list of friend requests.
+  - Done when: tests for AC-008.1–008.9 pass; two phones become friends and see each other's
+    binders.
+
+- [ ] T-008: Trade offers: create, cancel, sent list
+  - Estimate: 0.75 h
+  - Requirements: REQ-009
+  - Depends on: T-007
+  - Scope: `POST /api/trades` (friend source only for now), partial unique index lock,
+    `POST /api/trades/:id/cancel`, `GET /api/trades?box=sent`; trade picker UI from a
+    friend's binder (their card + my card), sent-offers screen.
+  - Done when: tests for AC-009.1–009.3, 009.4 (friend case), 009.5–009.7 pass.
+
+- [ ] T-009: Inbox: accept/decline with atomic swap + badge
+  - Estimate: 1 h
+  - Requirements: REQ-010, NFR-009
+  - Depends on: T-008
+  - Scope: accept/decline endpoints in IMMEDIATE transactions with ownership re-check,
+    fail other pending offers on the same instances; inbox lists trade offers; badge polling
+    every 20 s while the app is visible.
+  - Done when: tests for AC-010.1–010.8 pass; the NFR-009 randomized invariant test (500
+    seeded actions) passes; a trade between two phones completes and both binders update.
+
+## Milestone 4: Daily trading pack (Fri, only if before hour 8)
+- [ ] T-010: Daily trading pack
+  - Estimate: 1 h
+  - Requirements: REQ-011, REQ-009 (AC-009.4 daily-pack case)
+  - Depends on: T-009
+  - Scope: lazy per-player pack per UTC day (injected clock + RNG), availability flag,
+    `GET /api/daily-pack`, pack screen with "request" starting the trade picker; allow
+    `daily_pack` as a trade source.
+  - Done when: tests for AC-011.1–011.5 and AC-009.4 (pack case) pass.
+
+## Milestone 5: Field test and ship (Sat – Sun)
+- [ ] T-011: Pre-field-test hardening
+  - Estimate: 0.5 h
+  - Requirements: NFR-001, NFR-002, NFR-003, NFR-005, NFR-010
+  - Depends on: T-005
+  - Scope: daily SQLite backup (keep 7), load script with 5 parallel captures against a stub
+    model, manual phone checklist (`docs/field-test-checklist.md`: install first on iOS,
+    camera, capture, profile-not-found recovery, trade if built). 👤 run the checklist on 2
+    phones; confirm firewall rules and tags.
+  - Done when: backup test passes; load script shows no 5xx at 5 parallel captures (a 6th is
+    rejected per AC-003.12); checklist passes on Chrome Android and Safari iOS.
+
+- [ ] T-012: 👤 Card art for Everyday Nature
+  - Estimate: ~1 h of the human's time, outside build hours
+  - Requirements: REQ-001 (AC-001.4), NFR-008
+  - Depends on: T-003 (can run in parallel with M2–M3, outside build hours)
+  - Scope: resolve Q-6 (tool/model whose terms allow publication); 3 test images (oak, rose,
+    dog) for style consistency, then the remaining 12; save as
+    `expansions/everyday-nature/images/<id>.png`; fill `license.images`.
+  - Done when: seed runs **without** `--placeholders`; `license.images` names tool, model
+    and terms.
+
+- [ ] T-013: Installable PWA
+  - Estimate: 0.25 h
+  - Requirements: REQ-013 (AC-013.1)
+  - Depends on: T-002a; do before T-014 so iOS testers install first
+  - Scope: vite-plugin-pwa manifest + icons + minimal service worker (app shell only, no
+    offline capture), `injectRegister: 'script'`.
+  - Done when: AC-013.1 checked manually on Android and iOS.
+
+- [ ] T-014: 👤 Field test (Sat 2026-10-10 noon, regardless of state)
+  - Requirements: success metrics in product.md; NFR-003, NFR-004
+  - Depends on: whatever is done by Sat noon (at least T-005)
+  - Scope: resolve Q-1 (players); walk/garden/birding with ≥ 2 players; afterwards a
+    script reports cards captured, trades completed, capture p95 latency, error rate; check
+    no photos in DB, API filesystem or API/Caddy logs; no redeploys during the test.
+  - Done when: metrics recorded in `docs/spec/progress.md`; issues filed as tasks or noted.
+
+- [ ] T-015: 👤 Submission
+  - Requirements: G-1, NFR-006, NFR-008, NFR-011
+  - Depends on: T-014
+  - Scope: README (what, run locally with Ollama, self-host with compose, fork an
+    expansion); DEV post (why open, Mermaid diagram, odds, field-test results); 60-s video
+    incl. DO ↔ Ollama swap; GPU Droplet destroyed (not powered off); Q-9 terms cited if DO
+    serverless was used.
+  - Done when: post published and submitted by 2026-10-11 18:00 PDT; DO billing shows no
+    running GPU resources.
+
+## Coverage check
+| Requirement | Tasks |
+|---|---|
+| REQ-001 | T-001, T-003, T-012 |
+| REQ-002 | T-004 |
+| REQ-003 | T-001, T-002a, T-005 |
+| REQ-004 | T-005, T-001 + T-002b (AC-004.4) |
+| REQ-005 | T-005, T-006 |
+| REQ-006 | T-005 |
+| REQ-007 | T-006 |
+| REQ-008 | T-007 |
+| REQ-009 | T-008, T-010 |
+| REQ-010 | T-009 |
+| REQ-011 | T-010 |
+| REQ-012 | T-001, T-002a, T-003 (AC-012.3) |
+| REQ-013 | T-004 (AC-013.2), T-013 |
+| NFR-001 | T-002a, T-002b, T-011 |
+| NFR-002 | T-005, T-011, T-014 |
+| NFR-003 | T-011, T-014 |
+| NFR-004 | T-002a, T-014 |
+| NFR-005 | T-011 |
+| NFR-006 | T-015 |
+| NFR-007 | T-002a |
+| NFR-008 | T-012, T-015 |
+| NFR-009 | T-009 |
+| NFR-010 | T-011 |
+| NFR-011 | T-002b, T-015 |
