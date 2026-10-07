@@ -1,6 +1,6 @@
 # 0005. Use Hono + zod for the API and Vite + Preact for the PWA, in one package
 
-- Status: Proposed
+- Status: Accepted (2026-10-08)
 - Date: 2026-10-07
 - Deciders: adricasi
 

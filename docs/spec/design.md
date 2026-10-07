@@ -1,6 +1,6 @@
 # Design: TCGrass
 
-- Status: Draft <!-- Draft | In review | Approved -->
+- Status: Approved (2026-10-08) <!-- Draft | In review | Approved -->
 - Last updated: 2026-10-08 (spec-reviewer + Gemini fixes applied)
 - Implements: requirements.md (REQ-*, NFR-*)
 

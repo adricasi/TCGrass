@@ -1,6 +1,6 @@
 # 0003. Call Gemma through one env-configured OpenAI-compatible endpoint
 
-- Status: Proposed
+- Status: Accepted (2026-10-08)
 - Date: 2026-10-07
 - Deciders: adricasi
 

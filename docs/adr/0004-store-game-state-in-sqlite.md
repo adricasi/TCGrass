@@ -1,6 +1,6 @@
 # 0004. Store game state in SQLite with better-sqlite3
 
-- Status: Proposed
+- Status: Accepted (2026-10-08)
 - Date: 2026-10-07
 - Deciders: adricasi
 

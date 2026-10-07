@@ -1,6 +1,6 @@
 # Requirements: TCGrass
 
-- Status: Draft <!-- Draft | In review | Approved -->
+- Status: Approved (2026-10-08) <!-- Draft | In review | Approved -->
 - Last updated: 2026-10-08 (spec-reviewer + Gemini fixes applied)
 - Input: [product.md](product.md)
 

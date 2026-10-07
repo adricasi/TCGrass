@@ -1,6 +1,6 @@
 # 0002. Host on a single DigitalOcean Droplet with Docker Compose
 
-- Status: Proposed
+- Status: Accepted (2026-10-08)
 - Date: 2026-10-07
 - Deciders: adricasi
 
