@@ -1,7 +1,7 @@
 # Product: TCGrass
 
 - Status: Draft <!-- Draft | In review | Approved -->
-- Last updated: 2026-10-07 (spec-reviewer fixes applied)
+- Last updated: 2026-10-08 (spec-reviewer + Gemini fixes applied)
 - Input: [idea brief](../discovery/idea-brief.md) (verdict Go, 2026-10-07) ·
   [research notes](../discovery/research-notes.md)
 

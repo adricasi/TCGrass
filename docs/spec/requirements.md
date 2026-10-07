@@ -1,7 +1,7 @@
 # Requirements: TCGrass
 
 - Status: Draft <!-- Draft | In review | Approved -->
-- Last updated: 2026-10-07 (spec-reviewer fixes applied)
+- Last updated: 2026-10-08 (spec-reviewer + Gemini fixes applied)
 - Input: [product.md](product.md)
 
 IDs are permanent: never renumber or reuse. Deprecate with ~~strikethrough~~ and a note.
@@ -48,13 +48,10 @@ Priority follows the build order in product.md: Must = priorities 1–3, Should 
 - Acceptance criteria:
   - AC-002.1: WHEN the app is opened for the first time on a device THE SYSTEM SHALL show a
     notice that the game is for ages 16+ and that photos are deleted after identification.
-  - AC-002.10: WHEN the player confirms the notice and enters a valid display name THE SYSTEM
-    SHALL create a player, return its secret identifier exactly once in the creation response
-    and keep it in the device's storage.
-  - AC-002.2: WHEN a player is created THE SYSTEM SHALL assign a random secret identifier of at
-    least 128 bits and a unique public friend code of 8 characters that excludes look-alike
-    characters (0/O, 1/I/L); IF a generated friend code already exists THEN THE SYSTEM SHALL
-    generate another.
+  - AC-002.2: WHEN a player is created THE SYSTEM SHALL assign a random secret identifier of
+    256 bits and a unique public friend code of 8 uppercase characters from the alphabet
+    `23456789ABCDEFGHJKMNPQRSTUVWXYZ` (no 0/O, 1/I/L); IF a generated friend code already
+    exists THEN THE SYSTEM SHALL generate another.
   - AC-002.3: WHEN the app is reopened on the same device THE SYSTEM SHALL resume the same
     player without asking for anything.
   - AC-002.4: IF a display name is empty after trimming, longer than 20 characters or contains
@@ -69,6 +66,9 @@ Priority follows the build order in product.md: Must = priorities 1–3, Should 
     SYSTEM SHALL reject further creations from that IP until the window passes.
   - AC-002.9: WHEN a player is created THE SYSTEM SHALL store only a SHA-256 hash of the secret
     identifier on the server.
+  - AC-002.10: WHEN the player confirms the notice and enters a valid display name THE SYSTEM
+    SHALL create a player, return its secret identifier exactly once in the creation response
+    and keep it in the device's storage.
 
 ### REQ-003: Capture a card by photographing something real
 - Story: As a player, I want to photograph a real subject and get the matching card, so that
@@ -155,6 +155,8 @@ Priority follows the build order in product.md: Must = priorities 1–3, Should 
     before storing it.
   - AC-006.4: WHEN the flavor line is shown THE SYSTEM SHALL render it as plain text, never as
     markup.
+  - AC-006.5: WHEN the player dismisses the reveal THE SYSTEM SHALL return to the live camera
+    preview.
 
 ### REQ-007: Binder
 - Story: As a player, I want to see which cards I have and which I'm missing, so that I know
@@ -178,8 +180,9 @@ Priority follows the build order in product.md: Must = priorities 1–3, Should 
 - Acceptance criteria:
   - AC-008.1: WHEN the player opens their profile THE SYSTEM SHALL show their friend code and a
     way to copy or share it.
-  - AC-008.2: WHEN the player enters an existing friend code that is not their own THE SYSTEM
-    SHALL create a `pending` friend request to that player.
+  - AC-008.2: WHEN the player enters a friend code THE SYSTEM SHALL trim whitespace and convert
+    it to uppercase before matching, and WHEN it matches an existing player who is not the
+    sender THE SYSTEM SHALL create a `pending` friend request to that player.
   - AC-008.3: IF the code does not exist THEN THE SYSTEM SHALL say "No player with that code";
     IF it is the player's own code THEN THE SYSTEM SHALL reject it; IF they are already
     friends or a pending request already exists between them in either direction THEN THE

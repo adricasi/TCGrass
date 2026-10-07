@@ -1,7 +1,7 @@
 # Design: TCGrass
 
 - Status: Draft <!-- Draft | In review | Approved -->
-- Last updated: 2026-10-07 (spec-reviewer fixes applied)
+- Last updated: 2026-10-08 (spec-reviewer + Gemini fixes applied)
 - Implements: requirements.md (REQ-*, NFR-*)
 
 ## Overview
@@ -72,7 +72,8 @@ text). Retention: until 2026-11-30 (product.md A-11); photos are never stored (R
 | `friendships` | (`player_a_id`, `player_b_id`) PK with `a < b`, `created_at` | Symmetric, one row per pair |
 | `card_instances` | `id` PK, `expansion_id`, `card_id`, `rarity`, `owner_id`, `flavor_line`, `captured_at` | No image data or metadata (AC-004.3) |
 | `trade_offers` | `id` PK, `from_player_id`, `to_player_id`, `offered_instance_id`, `requested_instance_id`, `source` (`friend`/`daily_pack`), `status` (`pending`/`accepted`/`declined`/`cancelled`/`failed`), `created_at`, `resolved_at` | **Partial unique index** on `offered_instance_id WHERE status = 'pending'` enforces the lock (AC-009.2) in the DB |
-| `daily_pack_cards` | (`player_id`, `day` UTC `YYYY-MM-DD`, `position`) PK, `instance_id` | Created lazily on first open of the day with `INSERT OR IGNORE` inside a transaction, so concurrent first opens produce one pack (AC-011.2) |
+| `daily_packs` | (`player_id`, `day` UTC `YYYY-MM-DD`) PK, `created_at` | Marks the pack as chosen for that day, even when it is empty (AC-011.2, 011.3). Created lazily on first open with `INSERT OR IGNORE` inside a transaction, so concurrent first opens produce one pack |
+| `daily_pack_cards` | (`player_id`, `day`, `position`) PK, `instance_id`, `original_owner_id` | Owner at selection time. A pack card is unavailable if `card_instances.owner_id != original_owner_id` or it is locked (AC-011.4) |
 
 Trade state machine: `pending → accepted | declined | cancelled | failed`; all terminal.
 "Locked" is derived: an instance is locked while it is `offered_instance_id` of a `pending` offer.
@@ -88,7 +89,7 @@ transaction, tracked with `PRAGMA user_version`.
 (integers summing to 100), `style_prompt`, `identification.instructions`, `cards[]`
 (`id`, `name`, `category`, `identify_hint`, `art_prompt`). Validated by a zod schema in
 `src/shared/`. Images: `images/<card id>.png`, 3:4 portrait. Placeholder mode
-(`npm run seed -- <dir> --placeholders`) substitutes a generated SVG per category.
+(`npm run seed -- <dir> --placeholders`) substitutes a generated SVG per category (`image_path` then ends in `.svg`).
 
 ## Interfaces
 JSON over HTTPS, same origin only (no CORS). Auth: `Authorization: Bearer <player secret>`
@@ -105,18 +106,18 @@ with the server).
 | `POST /api/players` `{displayName}` → `{secret, displayName, friendCode}` | Create anonymous player | AC-002.1–002.4 |
 | `GET /api/me` | Current player (name, friend code) | AC-002.3, AC-008.1 |
 | `GET /api/expansion` | Active expansion: cards, image URLs, odds | AC-005.4, AC-007.1 |
-| `POST /api/captures` (multipart `photo`) → `{outcome: "card" \| "none" \| "screen" \| "retry", card?}` | Identify, drop photo, roll, mint | REQ-003–006 |
+| `POST /api/captures` (multipart `photo`) → `{ outcome: "card" \| "none" \| "screen" \| "retry", card?: { id: number, cardId: string, name: string, category: string, rarity: "common" \| "rare" \| "epic" \| "legendary", flavorLine: string \| null, imageUrl: string } }` (`card` present only when `outcome = "card"`; schema in `src/shared/`) | Identify, drop photo, roll, mint | REQ-003–006 |
 | `GET /api/binder` | Own instances grouped by card + `owned/total` | REQ-007 |
 | `POST /api/friend-requests` `{friendCode}` | Send friend request | AC-008.2–008.4 |
 | `POST /api/friend-requests/:id/accept` · `/decline` | Respond | AC-008.7, 008.8 |
 | `GET /api/friends` · `GET /api/friends/:friendCode/binder` | Friends list; a friend's binder with availability | AC-008.5, 008.9 |
 | `GET /api/inbox` | Received pending trade offers + friend requests, with counts (polled every 20 s) | AC-008.6, AC-010.1, 010.2 |
 | `POST /api/trades` `{offeredInstanceId, requestedInstanceId}` | Create offer (friend or daily-pack target) | REQ-009 |
-| `GET /api/trades?box=sent` | Sent offers and statuses | AC-009.6 |
+| `GET /api/trades/sent` | Sent offers and statuses (received offers come from `GET /api/inbox`) | AC-009.6 |
 | `POST /api/trades/:id/accept` · `/decline` · `/cancel` | Respond / cancel | REQ-010, AC-009.5 |
 | `GET /api/daily-pack` | Today's pack with availability | REQ-011 |
 | `GET /healthz` | DB check | NFR-007 |
-| `GET /`, `/assets/*` · `GET /cards/:expansionId/:cardId.png` | PWA build; card art resolved through `catalogue_cards.image_path` (ids validated against the DB, never used to build a filesystem path) | REQ-006, 013 |
+| `GET /`, `/assets/*` · `GET /cards/:expansionId/:cardId` | PWA build; card art resolved through `catalogue_cards.image_path` (ids validated against the DB, never used to build a filesystem path), served as `image/png` or `image/svg+xml` by the file's extension. API responses carry the full `imageUrl` | REQ-006, 013 |
 
 ### Identification call
 `POST {INFERENCE_BASE_URL}/chat/completions` with `model = INFERENCE_MODEL`, temperature 0.2,
@@ -275,7 +276,7 @@ Estimates, to be checked against DigitalOcean's pricing page when the resources 
 | REQ-008 | Data model (friend_requests, friendships); Interfaces (friends) |
 | REQ-009 | Data model (trade_offers, partial unique index); Interfaces (trades); D-6 |
 | REQ-010 | Data model (state machine); Interfaces (inbox, accept/decline); D-3 |
-| REQ-011 | Data model (daily_pack_cards); Interfaces (`GET /api/daily-pack`) |
+| REQ-011 | Data model (daily_packs, daily_pack_cards); Interfaces (`GET /api/daily-pack`) |
 | REQ-012 | Interfaces (configuration, identification call); D-2 |
 | REQ-013 | Components (PWA, vite-plugin-pwa) |
 | NFR-001 | Security design (TLS, headers, validation, secrets); Environments (CI) |

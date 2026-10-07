@@ -1,7 +1,7 @@
 # Tasks: TCGrass
 
 - Status: Draft <!-- Draft | In review | Approved -->
-- Last updated: 2026-10-07 (spec-reviewer fixes applied)
+- Last updated: 2026-10-08 (spec-reviewer + Gemini fixes applied)
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
 Order = implementation order. Each task is a small vertical slice (≤ ~1 day), references
@@ -79,7 +79,7 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
   - Depends on: T-002a
   - Scope: better-sqlite3 setup (WAL, busy_timeout), migrations runner + first migration
     (all tables in design.md), `npm run seed -- <dir> [--placeholders]`, placeholder SVG per
-    category, `GET /api/expansion`, `/cards/:expansionId/:cardId.png`, `ACTIVE_EXPANSION`;
+    category, `GET /api/expansion`, `/cards/:expansionId/:cardId` (PNG or placeholder SVG), `ACTIVE_EXPANSION`;
     test fixture expansion in `test/fixtures/expansions/`; startup check
     for the active expansion; 👤 run the seed in prod after deploy.
   - Done when: tests for AC-001.1–001.7 and AC-012.3 pass; seeding `everyday-nature` with
@@ -107,7 +107,7 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
     (Common/Rare static, Epic/Legendary animated foil, label + color), plain-text flavor line
     truncated to 140 before storing; messages for none/screen/retry.
   - Done when: tests for AC-003.5–003.7, 003.11, AC-004.1–004.3, AC-005.1–005.3,
-    AC-006.1–006.4 pass; a photo on the phone produces a revealed card stored in the DB.
+    AC-006.1–006.5 pass; a photo on the phone produces a revealed card stored in the DB.
 
 - [ ] T-006: Binder + odds view
   - Estimate: 0.75 h
@@ -136,7 +136,7 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
   - Requirements: REQ-009
   - Depends on: T-007
   - Scope: `POST /api/trades` (friend source only for now), partial unique index lock,
-    `POST /api/trades/:id/cancel`, `GET /api/trades?box=sent`; trade picker UI from a
+    `POST /api/trades/:id/cancel`, `GET /api/trades/sent`; trade picker UI from a
     friend's binder (their card + my card), sent-offers screen.
   - Done when: tests for AC-009.1–009.3, 009.4 (friend case), 009.5–009.7 pass.
 
