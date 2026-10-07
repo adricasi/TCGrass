@@ -44,8 +44,8 @@ project (DEV *Hacktoberfest Open-Source AI Challenge, Week 1 "Touch Grass"*, eve
 ## Success metrics
 | Metric | Target | How it is measured |
 |---|---|---|
-| Entry submitted (G-1) | Published post + video submitted by **2026-10-11 18:00 PDT** (hard deadline 23:59 PDT) | DEV submission timestamp |
-| Field test (G-2, G-5) | ≥ 2 players (author included), ≥ 10 cards captured in total, ≥ 1 completed trade between friends, on Sat 2026-10-10 | Database counts after the test; documented in the post |
+| Entry submitted (G-1) | Published post + video submitted by **Sun 2026-10-11 22:00 CEST** (hard deadline Sun 23:59 PDT = Mon 2026-10-12 08:59 CEST) | DEV submission timestamp |
+| Field test (G-2, G-5) | ≥ 2 players (author included), ≥ 10 cards captured in total, ≥ 1 completed trade between friends, on Sun 2026-10-11 10:00–12:30 CEST | Database counts after the test; documented in the post |
 | Identification quality (G-2) | On a 20-photo test set (12 catalogue subjects, 5 non-catalogue, 3 screens/prints): ≥ 80 % correct outcome, 100 % parseable responses, screen rejection reported (best effort; a miss is a stated limitation) | Spike script run against the draft expansion |
 | Photo retention (G-3) | 0 photos persisted by TCGrass (DB, API filesystem, API/Caddy logs); inference server logging off | Test + manual check after the field test |
 | Forkability (G-4) | A second expansion folder (test fixture) loads with **zero code changes** | Seed script test |
@@ -90,7 +90,9 @@ Build priority (cut from the bottom when time runs out): (1) expansion + seed + 
 - Native mobile apps.
 
 ## Constraints
-- **Deadline**: Sun **2026-10-11 23:59 PDT**; aim to submit by 18:00 PDT, draft done 12:00 PDT.
+- **Deadline**: Sun **2026-10-11 23:59 PDT** = Mon 2026-10-12 08:59 CEST; aim to submit by Sun
+  22:00 CEST, draft done Sun 18:00 CEST.
+- **Availability**: build starts Fri 2026-10-09 afternoon (schedule in tasks.md).
 - **Budget**: 14 h total (≈ 8 h of build); ≤ $25 cloud spend.
 - **Mandated technology**: Gemma (open weights, Apache 2.0) for identification;
   **DigitalOcean** hosting (prize track; deliberate deviation from the toolkit's GCP default,
@@ -141,6 +143,6 @@ reconfirmed 2026-10-07).
 - A-6: Friendship needs a request + accept (confirmed 2026-10-07); removing friends, blocking and cancelling a sent request are not supported.
 - A-7: Server-side capture p95 ≤ 8 s is achievable with the chosen inference path; revisit after the spike.
 - A-8: Confirmed 2026-10-07: a locked instance is shown as unavailable and cannot be requested by others until its offer resolves.
-- A-9: Confirmed 2026-10-07: the field test runs in Europe (CEST); the daily pack rolls over at 00:00 UTC = 02:00 CEST, outside the test window.
+- A-9: Confirmed 2026-10-07: the field test runs in Europe (CEST); the daily pack rolls over at 00:00 UTC = 02:00 CEST, outside the test window (Sun 10:00–12:30 CEST).
 - A-10: Ollama fallback is reached via an SSH reverse tunnel to the Droplet (end-to-end encrypted, no third party), not ngrok/Cloudflare.
 - A-11: Game data is retained until 2026-11-30, then the Droplet and volume are destroyed unless the project continues.

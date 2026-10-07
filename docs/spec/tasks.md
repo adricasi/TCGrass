@@ -9,16 +9,26 @@ the requirements it serves, and has an objective "Done when". 👤 = steps only 
 do (create/destroy infrastructure, deploy, secrets, image generation, field test).
 
 Time budget: ≈ 8 h of build (product.md). Estimates below: M1–M3 ≈ 9.5 h, i.e. **over
-budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list or Sat morning).
-Checkpoints: hour 2 → inference path chosen (else Ollama fallback); **hour 8 → apply the cut
-list**; Sat 2026-10-10 noon → field test regardless of state; Sun 2026-10-11 18:00 PDT → submitted.
+budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list or Sat afternoon).
+
+### Schedule (all times CEST; work starts Fri 2026-10-09 afternoon)
+| When | Work | Checkpoint |
+|---|---|---|
+| Before Fri (optional, ≈ 30 min, not build time) | 👤 recruit field-test players (Q-1); pick the image tool and make 3 test images (Q-6, T-012); check the DO account can create a GPU Droplet | — |
+| **Fri 10-09, 14:00–19:00** (≈ 5 h) | M1: T-001, T-002a, T-002b; then T-003 | **≈ 16:00 (hour 2)**: inference path chosen, else Ollama fallback. **Kill**: no working Gemma endpoint by Fri 20:00 → skip this week |
+| Fri evening (not build time) | 👤 T-012: generate the remaining card art | — |
+| **Sat 10-10, 09:00–13:00** (≈ 3–4 h) | T-004, T-005, T-006, T-013 → minimum submittable | **≈ 13:00 (hour 8)**: apply the cut list |
+| Sat 10-10, 14:00–17:30 (accepted overrun) | M3: T-007, T-008, T-009; T-011; T-010 only if M3 is done by 16:30 | Deploy the final build by 18:00; no redeploys after that |
+| **Sun 10-11, 10:00–12:30** | 👤 T-014 field test, **regardless of state** | — |
+| Sun 10-11, 13:00–21:00 | T-015: fixes, 60-s video, post; destroy the GPU Droplet | Draft done 18:00; **submit by 22:00 CEST** (13:00 PDT) |
+| Mon 10-12, 08:59 CEST | — | **Hard deadline** (Sun 23:59 PDT) |
 
 - **Minimum submittable**: T-001–T-006 + T-012 (capture, reveal, binder; ≈ 6.5 h).
 - **Needed for the field-test trade metric**: T-007–T-009 (Must, but cuttable for submission).
 - **Cut list, in order**: T-010 (daily pack) → AC-009.6 sent-offers screen → UI component
   tests → T-011 backups and load script → T-013 install (keep the AC-013.2 hint).
 
-## Milestone 1: Walking skeleton (Wed night – Thu morning)
+## Milestone 1: Walking skeleton (Fri 10-09 afternoon)
 - [ ] T-001: Inference client + identification spike
   - Estimate: 1 h
   - Requirements: REQ-003 (AC-003.4, 003.8, 003.9), REQ-012
@@ -62,7 +72,7 @@ list**; Sat 2026-10-10 noon → field test regardless of state; Sun 2026-10-11 1
   - Done when: CI green; on a real phone `https://<reserved-ip>.sslip.io` shows the camera and
     a photo of an oak returns `oak`; `curl -I http://…` returns 301/308 to https.
 
-## Milestone 2: Collect (Thu)
+## Milestone 2: Collect (T-003 Fri evening; rest Sat 10-10 morning)
 - [ ] T-003: Database + expansion seed command
   - Estimate: 1 h
   - Requirements: REQ-001, AC-012.3
@@ -109,7 +119,7 @@ list**; Sat 2026-10-10 noon → field test regardless of state; Sun 2026-10-11 1
   - Done when: tests for AC-007.1–007.3 and AC-005.4 pass; binder correct on the phone after
     3 captures.
 
-## Milestone 3: Social (Fri)
+## Milestone 3: Social (Sat 10-10 afternoon)
 - [ ] T-007: Friend requests + friends' binders
   - Estimate: 1 h
   - Requirements: REQ-008
@@ -140,7 +150,7 @@ list**; Sat 2026-10-10 noon → field test regardless of state; Sun 2026-10-11 1
   - Done when: tests for AC-010.1–010.8 pass; the NFR-009 randomized invariant test (500
     seeded actions) passes; a trade between two phones completes and both binders update.
 
-## Milestone 4: Daily trading pack (Fri, only if before hour 8)
+## Milestone 4: Daily trading pack (Sat 10-10, only if M3 is done by 16:30)
 - [ ] T-010: Daily trading pack
   - Estimate: 1 h
   - Requirements: REQ-011, REQ-009 (AC-009.4 daily-pack case)
@@ -150,7 +160,7 @@ list**; Sat 2026-10-10 noon → field test regardless of state; Sun 2026-10-11 1
     `daily_pack` as a trade source.
   - Done when: tests for AC-011.1–011.5 and AC-009.4 (pack case) pass.
 
-## Milestone 5: Field test and ship (Sat – Sun)
+## Milestone 5: Field test and ship (Sat 10-10 – Sun 10-11)
 - [ ] T-011: Pre-field-test hardening
   - Estimate: 0.5 h
   - Requirements: NFR-001, NFR-002, NFR-003, NFR-005, NFR-010
@@ -180,9 +190,9 @@ list**; Sat 2026-10-10 noon → field test regardless of state; Sun 2026-10-11 1
     offline capture), `injectRegister: 'script'`.
   - Done when: AC-013.1 checked manually on Android and iOS.
 
-- [ ] T-014: 👤 Field test (Sat 2026-10-10 noon, regardless of state)
+- [ ] T-014: 👤 Field test (Sun 2026-10-11 10:00–12:30 CEST, regardless of state)
   - Requirements: success metrics in product.md; NFR-003, NFR-004
-  - Depends on: whatever is done by Sat noon (at least T-005)
+  - Depends on: whatever is deployed by Sat 18:00 (at least T-005)
   - Scope: resolve Q-1 (players); walk/garden/birding with ≥ 2 players; afterwards a
     script reports cards captured, trades completed, capture p95 latency, error rate; check
     no photos in DB, API filesystem or API/Caddy logs; no redeploys during the test.
@@ -195,7 +205,7 @@ list**; Sat 2026-10-10 noon → field test regardless of state; Sun 2026-10-11 1
     expansion); DEV post (why open, Mermaid diagram, odds, field-test results); 60-s video
     incl. DO ↔ Ollama swap; GPU Droplet destroyed (not powered off); Q-9 terms cited if DO
     serverless was used.
-  - Done when: post published and submitted by 2026-10-11 18:00 PDT; DO billing shows no
+  - Done when: post published and submitted by Sun 2026-10-11 22:00 CEST (hard deadline Mon 2026-10-12 08:59 CEST); DO billing shows no
     running GPU resources.
 
 ## Coverage check
