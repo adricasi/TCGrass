@@ -28,6 +28,11 @@ AGENTS.md
 docs/discovery/
 docs/spec/progress.md
 
+# --- TCGrass private data (never committed; agents denied) ---
+spike-photos/
+data/
+.dev/
+
 # --- common ---
 *.log
 .DS_Store

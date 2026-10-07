@@ -40,7 +40,8 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
     `scripts/spike-identify.ts` (folder of labelled photos → accuracy report).
     👤 smoke-test DO serverless Gemma with one image; if it fails, create a GPU Droplet with
     vLLM (`--api-key`, firewall) or start Ollama locally; take 20 labelled photos (12 catalogue,
-    5 non-catalogue, 3 screen/print); check request logging is off on a self-hosted server
+    5 non-catalogue, 3 screen/print) into `spike-photos/` and run the spike script yourself
+    (agents are denied that folder); check request logging is off on a self-hosted server
     (AC-004.4); for DO serverless, look up its data terms (Q-9).
   - Done when: unit tests for AC-003.8, AC-003.9, AC-012.1, AC-012.2 pass with a fake
     endpoint; the spike report shows ≥ 80 % correct outcomes and 100 % parseable (cards that

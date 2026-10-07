@@ -199,7 +199,7 @@ naming any missing or invalid key without printing values (AC-012.2), or if
 
 ## Environments and deployment
 - **Local**: `npm run dev` (Vite dev server proxying `/api` to the API) against Ollama
-  `gemma` on the laptop; SQLite file in `./data`. Camera testing on a phone over HTTPS via
+  `gemma` on the laptop; SQLite file in `./.dev/` (git-ignored; `./data` is the Compose volume and is off-limits to agents). Camera testing on a phone over HTTPS via
   `docker compose up` with Caddy's internal CA or a tunnel.
 - **Prod**: one Droplet (Ubuntu LTS, unattended-upgrades on), tagged per ADR 0002. The human
   runs `git pull && docker compose up -d --build`, then
