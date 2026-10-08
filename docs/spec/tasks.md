@@ -29,7 +29,9 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
   tests → T-011 backups and load script → T-013 install (keep the AC-013.2 hint).
 
 ## Milestone 1: Walking skeleton (Fri 10-09 afternoon)
-- [ ] T-001: Inference client + identification spike
+- [x] T-001: Inference client + identification spike
+  - Agent part done 2026-10-08; 👤 pending: endpoint smoke test, 20-photo spike run, Q-7
+    and the chosen path + model id in design.md, AC-004.4 logging check, Q-9.
   - Estimate: 1 h
   - Requirements: REQ-003 (AC-003.4, 003.8, 003.9), REQ-012
   - Depends on: —
