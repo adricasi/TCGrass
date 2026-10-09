@@ -1,7 +1,7 @@
 # Design: TCGrass
 
 - Status: Approved (2026-10-08) <!-- Draft | In review | Approved -->
-- Last updated: 2026-10-08 (spec-reviewer + Gemini fixes applied)
+- Last updated: 2026-10-09 (T-001 spike result recorded; Q-7 production path still open)
 - Implements: requirements.md (REQ-*, NFR-*)
 
 ## Overview
@@ -43,6 +43,15 @@ flowchart LR
 
 The inference **path** (DO serverless vs vLLM on GPU Droplet vs Ollama) is decided by the
 hour-1 spike (product.md Q-7) and needs no design change.
+
+**Spike result (T-001, 2026-10-09).** Validated path: **Ollama 0.35 on the author's laptop,
+model `gemma4:e4b`**. 18 labelled photos (12 catalogue, 3 non-catalogue, 3 screen/print):
+100 % correct in two consecutive runs (12/12 matched, 3/3 none, 3/3 screen), 100 % parseable,
+no flavor line quoting photo text or describing people/places. Latency p50 6.0 s / p95 14.8 s,
+which misses NFR-004 (p95 ≤ 8 s) on that hardware. An earlier run with the first prompt gave
+0/3 on non-catalogue photos (forced matches at ≥ 0.90 confidence); the prompt now states that
+only the main subject counts and that look-alike kinds are "none". The photos are AI-generated,
+not field photos, so accuracy may be optimistic. Production path: still open (Q-7).
 
 ## Components
 | Component | Responsibility | Tech / service | Requirements |
@@ -124,7 +133,9 @@ with the server).
 `response_format` JSON where supported. System message: expansion instructions + the
 catalogue as `id — name — identify_hint` lines + the required JSON shape. User message: the
 photo as a base64 `data:` URL. Expected answer, validated with zod:
-`{ card_id: <catalogue id> | "none", confidence: 0..1, is_photo_of_screen: boolean, flavor_line: string }`.
+`{ card_id: <catalogue id> | "none", confidence: 0..1, is_photo_of_screen: boolean, flavor_line: string }`
+(`flavor_line` may be missing or empty: the reveal is shown without it, AC-006.3; it is stripped
+of control/bidi characters and cut to 140 characters).
 Decision order: invalid → `none`; `is_photo_of_screen` → `screen`; `none` or confidence
 < `IDENTIFY_MIN_CONFIDENCE` (default 0.5) → `none`; otherwise mint. Timeout 30 s → `retry`.
 
@@ -258,7 +269,8 @@ Estimates, to be checked against DigitalOcean's pricing page when the resources 
 | D-6 | Card lock enforced by a partial unique index on pending offers | — (Q-4) |
 
 ## Open questions (design)
-- Q-7 (product.md): inference path, decided by the spike.
+- Q-7 (product.md): production inference path. The spike validated Ollama + `gemma4:e4b` locally
+  (2026-10-09); choosing DO serverless / vLLM GPU Droplet / laptop Ollama is deferred.
 - ~~Q-8~~ resolved 2026-10-07: Caddy uses `<reserved-ip>.sslip.io` as `PUBLIC_HOSTNAME`
   (no domain cost; the Reserved IP keeps the name stable).
 - Q-9 (product.md): DO serverless data terms, if that path is chosen.

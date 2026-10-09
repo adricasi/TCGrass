@@ -24,9 +24,11 @@ style_prompt: >-
 
 identification:
   instructions: >-
-    Choose the single catalogue card that best matches the main subject of the photo.
-    Answer "none" if no card matches or the subject is unclear. Set is_photo_of_screen
-    true if the photo shows a screen, a printed picture or a drawing instead of the real thing.
+    Choose the single catalogue card that matches the main subject of the photo.
+    Answer "none" if the main subject is not one of the catalogue kinds, even if a
+    catalogue kind appears in the background, or if the subject is unclear. Set
+    is_photo_of_screen true if the photo shows a screen, a printed picture or a drawing
+    instead of the real thing.
 
 cards:
   # --- Trees ---
@@ -97,7 +99,9 @@ cards:
   - id: pigeon
     name: City Pigeon
     category: animal
-    identify_hint: Feral/rock pigeon, grey with iridescent neck feathers.
+    identify_hint: >-
+      Feral/rock pigeon only, grey with iridescent neck feathers. Gulls, sparrows,
+      crows and other birds are not pigeons.
     art_prompt: A grey city pigeon with an iridescent green and purple neck, standing on cobblestones.
   - id: chicken
     name: Chicken
