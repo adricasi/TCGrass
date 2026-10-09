@@ -8,11 +8,21 @@ export type { Logger };
  * this is the safety net if one ever does.
  */
 export const SENSITIVE_KEY = /key|secret|authorization|cookie|token|password|photo/i;
+/** A bearer credential inside any string value, whatever the field is called. */
+const BEARER_VALUE = /Bearer\s+\S+/gi;
 const REDACTED = "[redacted]";
+const MAX_DEPTH = 8;
 
 function scrub(value: unknown, depth = 0): unknown {
-  if (depth > 8 || value === null || typeof value !== "object") {
+  if (typeof value === "string") {
+    return value.replace(BEARER_VALUE, REDACTED);
+  }
+  if (value === null || typeof value !== "object") {
     return value;
+  }
+  if (depth > MAX_DEPTH) {
+    // Too deep to inspect: drop it rather than log something unchecked.
+    return REDACTED;
   }
   if (Array.isArray(value)) {
     return value.map((item) => scrub(item, depth + 1));

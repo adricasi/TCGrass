@@ -26,6 +26,7 @@ function config(overrides: Partial<ServerConfig> = {}): ServerConfig {
     logLevel: "info",
     logFilePath: undefined,
     databasePath: join(dir, "data", "tcgrass.db"),
+    trustProxy: false,
     ...overrides,
   };
 }

@@ -14,6 +14,7 @@ import { migrate } from "../../src/server/db/migrate.js";
 import { loadExpansionFolder } from "../../src/server/expansion/load.js";
 import { findExpansion, type StoredExpansion } from "../../src/server/expansion/repository.js";
 import { seedExpansion } from "../../src/server/expansion/seed.js";
+import { createPlayer } from "../../src/server/players/service.js";
 import type { Identification, Identifier, Photo } from "../../src/server/identify/client.js";
 import { createLogger } from "../../src/server/logger.js";
 
@@ -92,17 +93,24 @@ export interface TestAppOptions {
   maxUploads?: number;
 }
 
+/** Creates a player and returns the header that authenticates as them. */
+export function playerAuth(db: Db, displayName = "Tester"): Record<string, string> {
+  return { authorization: `Bearer ${createPlayer(db, displayName).secret}` };
+}
+
 export interface TestApp {
   app: Hono<AppEnv>;
   log: ReturnType<typeof memoryLog>;
   db: Db;
+  /** Authorization header of a player created for this app. */
+  auth: Record<string, string>;
 }
 
 export function testApp(identify: Identifier, options: TestAppOptions = {}): TestApp {
   const log = memoryLog();
   const { db, expansion } = seededDb();
   const app = createApp({ db, expansion, identify, logger: log.logger, ...options });
-  return { app, log, db };
+  return { app, log, db, auth: playerAuth(db) };
 }
 
 export function photoForm(bytes: Uint8Array, type = "image/jpeg"): FormData {

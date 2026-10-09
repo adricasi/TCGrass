@@ -2,7 +2,7 @@ import "./style.css";
 
 import { render } from "preact";
 
-import { Capture } from "./Capture.js";
+import { App } from "./App.js";
 
 const root = document.getElementById("app");
 if (root === null) {
@@ -11,7 +11,7 @@ if (root === null) {
 render(
   <main>
     <h1>TCGrass</h1>
-    <Capture />
+    <App />
   </main>,
   root,
 );

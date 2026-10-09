@@ -95,7 +95,7 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
     loads 15 cards; `GET /api/expansion` returns 15 cards with odds. Production seed command is
     `npm run seed:prod` (compiled; the runtime image has no tsx). 👤 prod seed waits for T-002b.
 
-- [ ] T-004: Anonymous players + auth
+- [~] T-004: Anonymous players + auth
   - Estimate: 0.75 h
   - Requirements: REQ-002, REQ-013 (AC-013.2)
   - Depends on: T-003

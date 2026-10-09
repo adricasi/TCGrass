@@ -142,12 +142,13 @@ Decision order: invalid → `none`; `is_photo_of_screen` → `screen`; `none` or
 ### Configuration (env)
 `INFERENCE_BASE_URL`, `INFERENCE_MODEL`, `INFERENCE_API_KEY` (optional, secret),
 `IDENTIFY_MIN_CONFIDENCE`, `ACTIVE_EXPANSION`, `DATABASE_PATH`, `LOG_FILE_PATH`,
-`PUBLIC_HOSTNAME` (Caddy), `PORT`, `LOG_LEVEL`. Parsed once at startup with zod; startup fails
+`PUBLIC_HOSTNAME` (Caddy), `PORT`, `LOG_LEVEL`, `TRUST_PROXY` (`true` only behind Caddy:
+client IPs for rate limits then come from `X-Forwarded-For`). Parsed once at startup with zod; startup fails
 naming any missing or invalid key without printing values (AC-012.2), or if
 `ACTIVE_EXPANSION` is not loaded (AC-012.3). `.env.example` lists them without values.
 
 ## Security design
-- Identities: players are anonymous; the 256-bit random secret (`crypto.getRandomValues`,
+- Identities: players are anonymous; the 256-bit random secret (`crypto.randomBytes`,
   base64url) is a bearer credential stored only on the device (localStorage) and as a SHA-256
   hash on the server. No human or service accounts in the app. The human operates the
   Droplet with an SSH key; agents never deploy or create infrastructure.

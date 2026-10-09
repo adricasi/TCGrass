@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { fakeIdentifier, photoForm, testApp } from "./helpers.js";
 
-const { app } = testApp(fakeIdentifier({ outcome: "none", reason: "no-match" }).identify);
+const { app, auth } = testApp(fakeIdentifier({ outcome: "none", reason: "no-match" }).identify);
 
 describe("app", () => {
   it("NFR-007 answers /healthz", async () => {
@@ -26,6 +26,7 @@ describe("app", () => {
   it("NFR-001 sets the security headers on error responses too", async () => {
     const response = await app.request("/api/captures", {
       method: "POST",
+      headers: auth,
       body: photoForm(new Uint8Array([1, 2, 3])),
     });
     expect(response.status).toBe(415);
@@ -40,13 +41,13 @@ describe("app", () => {
   });
 
   it("NFR-001 answers unknown routes with the error shape", async () => {
-    const response = await app.request("/api/nope");
+    const response = await app.request("/api/nope", { headers: auth });
     expect(response.status).toBe(404);
     expect(await response.json()).toEqual({ error: { code: "not_found", message: "Not found." } });
   });
 
   it("NFR-001 does not accept GET on the capture route", async () => {
-    const response = await app.request("/api/captures");
+    const response = await app.request("/api/captures", { headers: auth });
     expect(response.status).toBe(404);
   });
 });

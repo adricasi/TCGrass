@@ -10,9 +10,10 @@ const oak: Identification = { outcome: "card", cardId: "oak", confidence: 0.9, f
 
 async function postPhoto(
   app: ReturnType<typeof testApp>["app"],
+  auth: Record<string, string>,
   body: FormData | string,
 ): Promise<Response> {
-  return app.request("/api/captures", { method: "POST", body });
+  return app.request("/api/captures", { method: "POST", headers: auth, body });
 }
 
 async function errorCode(response: Response): Promise<string> {
@@ -22,9 +23,9 @@ async function errorCode(response: Response): Promise<string> {
 describe("POST /api/captures", () => {
   it("AC-004.2 sends the photo to the identifier and returns the matched card id", async () => {
     const model = fakeIdentifier(oak);
-    const { app } = testApp(model.identify);
+    const { app, auth } = testApp(model.identify);
 
-    const response = await postPhoto(app, photoForm(JPEG_BYTES));
+    const response = await postPhoto(app, auth, photoForm(JPEG_BYTES));
 
     expect(response.status).toBe(200);
     expect(captureResponseSchema.parse(await response.json())).toEqual({
@@ -41,9 +42,10 @@ describe("POST /api/captures", () => {
     ["WebP", [0x52, 0x49, 0x46, 0x46, 0x10, 0, 0, 0, 0x57, 0x45, 0x42, 0x50], "image/webp"],
   ])("AC-003.10 accepts a %s photo by its magic bytes", async (_label, bytes, mimeType) => {
     const model = fakeIdentifier(oak);
-    const { app } = testApp(model.identify);
+    const { app, auth } = testApp(model.identify);
     const response = await postPhoto(
       app,
+      auth,
       photoForm(new Uint8Array(bytes), "application/octet-stream"),
     );
     expect(response.status).toBe(200);
@@ -53,15 +55,15 @@ describe("POST /api/captures", () => {
   it.each(["none", "screen"] as const)(
     "returns the %s outcome without a card id",
     async (outcome) => {
-      const { app } = testApp(fakeIdentifier({ outcome } as Identification).identify);
-      const response = await postPhoto(app, photoForm(JPEG_BYTES));
+      const { app, auth } = testApp(fakeIdentifier({ outcome } as Identification).identify);
+      const response = await postPhoto(app, auth, photoForm(JPEG_BYTES));
       expect(await response.json()).toEqual({ outcome });
     },
   );
 
   it("AC-003.9 answers 200 with outcome retry when the model times out or fails", async () => {
-    const { app } = testApp(fakeIdentifier({ outcome: "retry", reason: "timeout" }).identify);
-    const response = await postPhoto(app, photoForm(JPEG_BYTES));
+    const { app, auth } = testApp(fakeIdentifier({ outcome: "retry", reason: "timeout" }).identify);
+    const response = await postPhoto(app, auth, photoForm(JPEG_BYTES));
     expect(response.status).toBe(200);
     expect(await response.json()).toEqual({ outcome: "retry" });
   });
@@ -72,8 +74,8 @@ describe("POST /api/captures", () => {
     ["an empty file", new Uint8Array()],
   ])("AC-003.10 rejects %s with 415 without calling the model", async (_label, bytes) => {
     const model = fakeIdentifier(oak);
-    const { app } = testApp(model.identify);
-    const response = await postPhoto(app, photoForm(bytes, "image/jpeg"));
+    const { app, auth } = testApp(model.identify);
+    const response = await postPhoto(app, auth, photoForm(bytes, "image/jpeg"));
     expect(response.status).toBe(415);
     expect(await errorCode(response)).toBe("photo_type");
     expect(model.photos).toHaveLength(0);
@@ -81,10 +83,10 @@ describe("POST /api/captures", () => {
 
   it("AC-003.10 rejects a photo larger than 5 MB with 413 without calling the model", async () => {
     const model = fakeIdentifier(oak);
-    const { app } = testApp(model.identify);
+    const { app, auth } = testApp(model.identify);
     const big = new Uint8Array(MAX_PHOTO_BYTES + 1);
     big.set(JPEG_BYTES);
-    const response = await postPhoto(app, photoForm(big));
+    const response = await postPhoto(app, auth, photoForm(big));
     expect(response.status).toBe(413);
     expect(await errorCode(response)).toBe("photo_too_large");
     expect(model.photos).toHaveLength(0);
@@ -92,10 +94,10 @@ describe("POST /api/captures", () => {
 
   it("AC-003.10 rejects a request body far over 5 MB with 413 before reading it", async () => {
     const model = fakeIdentifier(oak);
-    const { app } = testApp(model.identify);
+    const { app, auth } = testApp(model.identify);
     const huge = new Uint8Array(MAX_PHOTO_BYTES * 2);
     huge.set(JPEG_BYTES);
-    const response = await postPhoto(app, photoForm(huge));
+    const response = await postPhoto(app, auth, photoForm(huge));
     expect(response.status).toBe(413);
     expect(await errorCode(response)).toBe("photo_too_large");
     expect(model.photos).toHaveLength(0);
@@ -103,17 +105,17 @@ describe("POST /api/captures", () => {
 
   it("AC-003.10 accepts a photo of exactly 5 MB", async () => {
     const model = fakeIdentifier(oak);
-    const { app } = testApp(model.identify);
+    const { app, auth } = testApp(model.identify);
     const exact = new Uint8Array(MAX_PHOTO_BYTES);
     exact.set(JPEG_BYTES);
-    const response = await postPhoto(app, photoForm(exact));
+    const response = await postPhoto(app, auth, photoForm(exact));
     expect(response.status).toBe(200);
   });
 
   it("NFR-001 rejects a request without a photo field with 400", async () => {
     const model = fakeIdentifier(oak);
-    const { app } = testApp(model.identify);
-    const response = await postPhoto(app, "photo=nope");
+    const { app, auth } = testApp(model.identify);
+    const response = await postPhoto(app, auth, "photo=nope");
     expect(response.status).toBe(400);
     expect(await errorCode(response)).toBe("photo_missing");
     expect(model.photos).toHaveLength(0);
@@ -129,12 +131,12 @@ describe("POST /api/captures", () => {
           });
         }),
     );
-    const { app } = testApp(model.identify);
+    const { app, auth } = testApp(model.identify);
 
-    const inFlight = Array.from({ length: 5 }, () => postPhoto(app, photoForm(JPEG_BYTES)));
+    const inFlight = Array.from({ length: 5 }, () => postPhoto(app, auth, photoForm(JPEG_BYTES)));
     await expect.poll(() => model.photos.length).toBe(5);
 
-    const sixth = await postPhoto(app, photoForm(JPEG_BYTES));
+    const sixth = await postPhoto(app, auth, photoForm(JPEG_BYTES));
     expect(sixth.status).toBe(503);
     expect(await errorCode(sixth)).toBe("busy");
     expect(model.photos).toHaveLength(5);
@@ -145,7 +147,7 @@ describe("POST /api/captures", () => {
     const results = await Promise.all(inFlight);
     expect(results.map((response) => response.status)).toEqual([200, 200, 200, 200, 200]);
 
-    const afterwards = postPhoto(app, photoForm(JPEG_BYTES));
+    const afterwards = postPhoto(app, auth, photoForm(JPEG_BYTES));
     await expect.poll(() => model.photos.length).toBe(6);
     pending.at(-1)?.();
     expect((await afterwards).status).toBe(200);
@@ -161,11 +163,14 @@ describe("POST /api/captures", () => {
           });
         }),
     );
-    const { app } = testApp(model.identify, { maxUploads: 2 });
+    const { app, auth } = testApp(model.identify, { maxUploads: 2 });
 
-    const first = [postPhoto(app, photoForm(JPEG_BYTES)), postPhoto(app, photoForm(JPEG_BYTES))];
+    const first = [
+      postPhoto(app, auth, photoForm(JPEG_BYTES)),
+      postPhoto(app, auth, photoForm(JPEG_BYTES)),
+    ];
     await expect.poll(() => model.photos.length).toBe(2);
-    const third = await postPhoto(app, photoForm(JPEG_BYTES));
+    const third = await postPhoto(app, auth, photoForm(JPEG_BYTES));
     expect(third.status).toBe(503);
     expect(model.photos).toHaveLength(2);
 
@@ -177,9 +182,9 @@ describe("POST /api/captures", () => {
 
   it("AC-003.12 frees the slot when identification throws", async () => {
     const model = fakeIdentifier(() => Promise.reject(new Error("boom")));
-    const { app } = testApp(model.identify, { maxInFlight: 1 });
-    expect((await postPhoto(app, photoForm(JPEG_BYTES))).status).toBe(500);
-    expect((await postPhoto(app, photoForm(JPEG_BYTES))).status).toBe(500);
+    const { app, auth } = testApp(model.identify, { maxInFlight: 1 });
+    expect((await postPhoto(app, auth, photoForm(JPEG_BYTES))).status).toBe(500);
+    expect((await postPhoto(app, auth, photoForm(JPEG_BYTES))).status).toBe(500);
     expect(model.photos).toHaveLength(2);
   });
 });

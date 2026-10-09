@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 import { createApp } from "../../src/server/app.js";
 import type { Identification } from "../../src/server/identify/client.js";
 import { createLogger } from "../../src/server/logger.js";
-import { fakeIdentifier, memoryLog, photoForm, seededDb } from "./helpers.js";
+import { fakeIdentifier, memoryLog, photoForm, playerAuth, seededDb } from "./helpers.js";
 
 // A recognisable photo payload: if any of it reaches the logs, the test finds it.
 const PHOTO = new Uint8Array([
@@ -24,8 +24,9 @@ const SECRET = "player-secret-abcdef123456";
 describe("logging", () => {
   it("NFR-007 logs request id, method, path, status and latency for each request", async () => {
     const log = memoryLog();
+    const seeded = seededDb();
     const app = createApp({
-      ...seededDb(),
+      ...seeded,
       identify: fakeIdentifier({ outcome: "screen" }).identify,
       logger: log.logger,
     });
@@ -49,12 +50,17 @@ describe("logging", () => {
       confidence: 0.9,
       flavorLine: null,
     };
+    const seeded = seededDb();
     const app = createApp({
-      ...seededDb(),
+      ...seeded,
       identify: fakeIdentifier(card).identify,
       logger: log.logger,
     });
-    await app.request("/api/captures", { method: "POST", body: photoForm(PHOTO) });
+    await app.request("/api/captures", {
+      method: "POST",
+      headers: playerAuth(seeded.db),
+      body: photoForm(PHOTO),
+    });
 
     const capture = log.lines
       .map((line) => JSON.parse(line) as Record<string, unknown>)
@@ -70,23 +76,29 @@ describe("logging", () => {
       { outcome: "retry", reason: "timeout" },
     ];
     for (const outcome of outcomes) {
+      const seeded = seededDb();
       const app = createApp({
-        ...seededDb(),
+        ...seeded,
         identify: fakeIdentifier(outcome).identify,
         logger: log.logger,
       });
       await app.request("/api/captures?secret=" + SECRET, {
         method: "POST",
-        headers: { authorization: `Bearer ${SECRET}` },
+        headers: { ...playerAuth(seeded.db), "x-test-secret": SECRET },
         body: photoForm(PHOTO),
       });
     }
+    const seeded = seededDb();
     const failing = createApp({
-      ...seededDb(),
+      ...seeded,
       identify: fakeIdentifier(() => Promise.reject(new Error(`boom ${SECRET}`))).identify,
       logger: log.logger,
     });
-    await failing.request("/api/captures", { method: "POST", body: photoForm(PHOTO) });
+    await failing.request("/api/captures", {
+      method: "POST",
+      headers: playerAuth(seeded.db),
+      body: photoForm(PHOTO),
+    });
 
     const text = log.text();
     expect(log.lines.length).toBeGreaterThan(4);
@@ -122,6 +134,18 @@ describe("logging", () => {
     expect(text).toContain("[redacted]");
     expect(text).toContain('"cardId":"oak"');
     expect(text).toContain('"requestId":"r-1"');
+  });
+
+  it("NFR-007 redacts bearer values under any field name and anything nested too deep", () => {
+    const log = memoryLog();
+    let deep: Record<string, unknown> = { value: "deep-value-123" };
+    for (let index = 0; index < 12; index += 1) {
+      deep = { next: deep };
+    }
+    log.logger.info({ msg: `got Bearer ${SECRET}`, error: `bearer ${SECRET} rejected`, deep });
+    const text = log.text();
+    expect(text).not.toContain(SECRET);
+    expect(text).not.toContain("deep-value-123");
   });
 
   it("NFR-007 writes log lines to the configured file as well", async () => {

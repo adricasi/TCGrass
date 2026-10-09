@@ -31,7 +31,11 @@ export function bootstrap(config: ServerConfig, logger: Logger): Started {
       );
     }
     const identify = createIdentifier({ config, expansion: expansion.expansion });
-    return { app: createApp({ db, expansion, identify, logger }), db, expansion };
+    return {
+      app: createApp({ db, expansion, identify, logger, trustProxy: config.trustProxy }),
+      db,
+      expansion,
+    };
   } catch (error) {
     db.close();
     throw error;

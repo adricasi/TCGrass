@@ -50,6 +50,7 @@ const serverConfigSchema = configSchema.extend({
   ),
   LOG_FILE_PATH: z.preprocess(emptyAsUnset, z.string().optional()),
   DATABASE_PATH: z.string().trim().min(1),
+  TRUST_PROXY: z.preprocess(emptyAsUnset, z.enum(["true", "false"]).default("false")),
 });
 
 const databaseConfigSchema = z.object({ DATABASE_PATH: z.string().trim().min(1) });
@@ -69,6 +70,8 @@ export interface ServerConfig extends Config {
   logLevel: "fatal" | "error" | "warn" | "info" | "debug" | "trace";
   logFilePath: string | undefined;
   databasePath: string;
+  /** Read client IPs from X-Forwarded-For: set only behind Caddy (design § Security). */
+  trustProxy: boolean;
 }
 
 /**
@@ -110,6 +113,7 @@ export function loadServerConfig(env: NodeJS.ProcessEnv): ServerConfig {
     logLevel: parsed.LOG_LEVEL,
     logFilePath: parsed.LOG_FILE_PATH,
     databasePath: parsed.DATABASE_PATH,
+    trustProxy: parsed.TRUST_PROXY === "true",
   };
 }
 
