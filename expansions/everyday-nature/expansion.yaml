@@ -1,6 +1,6 @@
 # Everyday Nature: the launch expansion for TCGrass.
 # Images: generate one per card with `style_prompt` + the card's `art_prompt`, save as
-# images/<card id>.png (3:4 portrait, e.g. 768x1024).
+# images/<card id>.png (2:3 portrait, 768 px wide, compressed to <= ~350 KB, e.g. with pngquant).
 # Card choice favours subjects that are common in temperate towns and visually distinct,
 # so Gemma can tell them apart (validated with the 20-photo spike; swap cards that fail).
 

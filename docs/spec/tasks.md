@@ -182,7 +182,7 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
   - Done when: backup test passes; load script shows no 5xx at 5 parallel captures (a 6th is
     rejected per AC-003.12); checklist passes on Chrome Android and Safari iOS.
 
-- [ ] T-012: 👤 Card art for Everyday Nature
+- [~] T-012: 👤 Card art for Everyday Nature
   - Estimate: ~1 h of the human's time, outside build hours
   - Requirements: REQ-001 (AC-001.4), NFR-008
   - Depends on: T-003 (can run in parallel with M2–M3, outside build hours)

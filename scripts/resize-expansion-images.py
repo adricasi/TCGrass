@@ -1,75 +1,65 @@
-"""Resize and compress expansion card art to -resize 768x1024^ and ~300KB PNG."""
+"""Resize and compress an expansion's card art for phones (design.md § Expansion file).
+
+Scales every PNG to 768 px wide (keeping its aspect ratio, so 2:3 art becomes about
+768 x 1152) and reduces it to a 256-colour palette, which keeps each card around 300 KB.
+
+Usage:
+    python3 scripts/resize-expansion-images.py <expansion-dir> [--source <dir>]
+
+Reads <dir>/*.png (default: <expansion-dir>/images) and writes
+<expansion-dir>/images/<name>.png. Images already 768 px wide or narrower are left as they
+are, so running it twice does not degrade them. Needs Pillow (`pip install pillow`); it is a
+helper for expansion authors, not part of the app.
+"""
 
 from __future__ import annotations
 
-import io
-import os
-import subprocess
-from PIL import Image
+import argparse
+import sys
+from pathlib import Path
 
-TARGET_DIRS = [
-    r"expansion/everyday-nature/images",
-    r"expansions/everyday-nature/images",
-]
+try:
+    from PIL import Image
+except ImportError:
+    sys.exit("Pillow is required: pip install pillow")
 
-CARD_NAMES = [
-    "birch",
-    "cat",
-    "chicken",
-    "daisy",
-    "dandelion",
-    "dog",
-    "fruit-tree",
-    "geranium",
-    "horse",
-    "lavender",
-    "oak",
-    "palm",
-    "pigeon",
-    "pine",
-    "rose",
-]
+TARGET_WIDTH = 768
 
 
-def load_original(filename: str, local_path: str) -> Image.Image:
-    # If the local file already has the pristine 1696x2528 size, use it directly
-    if os.path.exists(local_path):
-        im = Image.open(local_path)
-        if im.size == (1696, 2528):
-            return im
-
-    # Otherwise fetch pristine original from git commit 32606d7
-    try:
-        data = subprocess.check_output(["git", "show", f"32606d7:images/{filename}"])
-        return Image.open(io.BytesIO(data))
-    except Exception:
-        return Image.open(local_path)
+def resize_and_compress(image: Image.Image) -> Image.Image:
+    scale = TARGET_WIDTH / image.width
+    resized = image.resize(
+        (TARGET_WIDTH, round(image.height * scale)), Image.Resampling.LANCZOS
+    )
+    return resized.convert("RGBA").quantize(colors=256, method=Image.Quantize.FASTOCTREE)
 
 
-def resize_and_compress(im: Image.Image) -> Image.Image:
-    # ImageMagick -resize 768x1024^ equivalent (minimum fill preserving aspect ratio)
-    orig_w, orig_h = im.size
-    scale = max(768 / orig_w, 1024 / orig_h)
-    new_w = round(orig_w * scale)
-    new_h = round(orig_h * scale)
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("expansion_dir", type=Path)
+    parser.add_argument("--source", type=Path, help="folder with the original PNGs")
+    args = parser.parse_args()
 
-    resized = im.resize((new_w, new_h), Image.Resampling.LANCZOS)
-    return resized.quantize(colors=256, method=Image.Quantize.FASTOCTREE)
+    target = args.expansion_dir / "images"
+    source = args.source or target
+    originals = sorted(source.glob("*.png"))
+    if not originals:
+        print(f"No PNG files in {source}", file=sys.stderr)
+        return 1
 
-
-def main() -> None:
-    for target_dir in TARGET_DIRS:
-        os.makedirs(target_dir, exist_ok=True)
-        print(f"Processing images into {target_dir}:")
-        for name in CARD_NAMES:
-            filename = f"{name}.png"
-            out_path = os.path.join(target_dir, filename)
-            original = load_original(filename, out_path)
-            processed = resize_and_compress(original)
-            processed.save(out_path, format="PNG", optimize=True)
-            size_kb = os.path.getsize(out_path) / 1024
-            print(f"  {filename:<15} size={processed.size} file_size={size_kb:.1f} KB")
+    target.mkdir(parents=True, exist_ok=True)
+    for original in originals:
+        out_path = target / original.name
+        with Image.open(original) as image:
+            if image.width <= TARGET_WIDTH:
+                print(f"  {original.name:<18} kept ({image.width}x{image.height})")
+                continue
+            processed = resize_and_compress(image)
+        processed.save(out_path, format="PNG", optimize=True)
+        size_kb = out_path.stat().st_size / 1024
+        print(f"  {original.name:<18} {processed.width}x{processed.height}  {size_kb:.0f} KB")
+    return 0
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

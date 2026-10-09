@@ -7,7 +7,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { openDatabase } from "../../src/server/db/connection.js";
 import { findExpansion } from "../../src/server/expansion/repository.js";
 import { runSeed, SEED_USAGE } from "../../src/server/seed.js";
-import { fixtureDir, repoPath } from "./helpers.js";
+import { copyFixture, fixtureDir, repoPath } from "./helpers.js";
 
 const dirs: string[] = [];
 
@@ -49,21 +49,29 @@ describe("seed command", () => {
   });
 
   it("AC-001.4 prints a warning per placeholder in placeholder mode", () => {
-    const result = run([repoPath("expansions/everyday-nature"), "--placeholders"], {
-      DATABASE_PATH: databasePath(),
-    });
+    const dir = copyFixture("fixture-a", ["oak", "fox"]);
+    const result = run([dir, "--placeholders"], { DATABASE_PATH: databasePath() });
     expect(result.code).toBe(0);
-    expect(result.warn).toHaveLength(15);
-    expect(result.warn[0]).toBe(
-      "warning: cards.pine: no images/pine.png, using the tree placeholder",
-    );
-    expect(result.log).toEqual(['Loaded expansion "everyday-nature": 15 cards.']);
+    expect(result.warn).toEqual([
+      "warning: cards.oak: no images/oak.png, using the tree placeholder",
+      "warning: cards.fox: no images/fox.png, using the animal placeholder",
+    ]);
+    expect(result.log).toEqual(['Loaded expansion "fixture-a": 3 cards.']);
   });
 
   it("AC-001.4 exits 1 naming the cards without art when placeholders are off", () => {
-    const result = run([repoPath("expansions/everyday-nature")], { DATABASE_PATH: databasePath() });
+    const result = run([copyFixture("fixture-a", ["fox"])], { DATABASE_PATH: databasePath() });
     expect(result.code).toBe(1);
-    expect(result.error[0]).toMatch(/cards\.pine: missing image images\/pine\.png/);
+    expect(result.error[0]).toMatch(/cards\.fox: missing image images\/fox\.png/);
+  });
+
+  it("AC-001.1 loads the real everyday-nature art without placeholders (T-012)", () => {
+    const result = run([repoPath("expansions/everyday-nature")], { DATABASE_PATH: databasePath() });
+    expect(result).toMatchObject({
+      code: 0,
+      warn: [],
+      log: ['Loaded expansion "everyday-nature": 15 cards.'],
+    });
   });
 
   it("AC-012.2 exits 1 naming DATABASE_PATH when it is missing", () => {

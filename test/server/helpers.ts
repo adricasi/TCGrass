@@ -1,8 +1,12 @@
+import { cpSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { Writable } from "node:stream";
 
 import { fileURLToPath } from "node:url";
 
 import type { Hono } from "hono";
+import { onTestFinished } from "vitest";
 
 import { type AppEnv, createApp } from "../../src/server/app.js";
 import { type Db, openDatabase } from "../../src/server/db/connection.js";
@@ -45,6 +49,23 @@ export function repoPath(relative: string): string {
 
 export function fixtureDir(id: string): string {
   return fileURLToPath(new URL(`../fixtures/expansions/${id}`, import.meta.url));
+}
+
+/**
+ * Copy of a fixture expansion in a temp dir (removed after the test), without the art of
+ * `withoutImages`, so tests can exercise missing-image and placeholder paths.
+ */
+export function copyFixture(id: string, withoutImages: string[] = []): string {
+  const root = mkdtempSync(join(tmpdir(), "tcgrass-fixture-"));
+  onTestFinished(() => {
+    rmSync(root, { recursive: true, force: true });
+  });
+  const target = join(root, id);
+  cpSync(fixtureDir(id), target, { recursive: true });
+  for (const cardId of withoutImages) {
+    rmSync(join(target, "images", `${cardId}.png`));
+  }
+  return target;
 }
 
 /** A migrated in-memory DB. */

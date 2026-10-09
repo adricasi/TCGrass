@@ -97,7 +97,7 @@ transaction, tracked with `PRAGMA user_version`.
 `name`, `version`, `license {data, images}`, `rarity_odds {common, rare, epic, legendary}`
 (integers summing to 100), `style_prompt`, `identification.instructions`, `cards[]`
 (`id`, `name`, `category`, `identify_hint`, `art_prompt`). Validated by a zod schema in
-`src/shared/`. Images: `images/<card id>.png`, 3:4 portrait. Placeholder mode
+`src/shared/`. Images: `images/<card id>.png`, 2:3 portrait (768 × 1145–1152, ≤ ~350 KB each; changed from 3:4 on 2026-10-09 to keep the art uncropped). Placeholder mode
 (`npm run seed -- <dir> --placeholders`) substitutes a generated SVG per category (`image_path` then ends in `.svg`).
 
 ## Interfaces
