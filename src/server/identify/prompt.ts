@@ -18,6 +18,11 @@ export function buildSystemPrompt(expansion: Expansion): string {
     "",
     "Rules:",
     `- card_id must be one of the catalogue ids above or "${NO_MATCH}".`,
+    "- First decide what the main subject of the photo is. Only that subject counts: a " +
+      "catalogue kind in the background is not a match.",
+    `- If the main subject is not one of the catalogue kinds, card_id is "${NO_MATCH}". A ` +
+      `similar but different kind is also "${NO_MATCH}". Most everyday objects (vehicles, ` +
+      `street furniture, buildings) are "${NO_MATCH}".`,
     "- is_photo_of_screen is true if the photo shows a screen, a printed picture or a drawing " +
       "instead of the real thing.",
     "- flavor_line is one playful sentence of at most 140 characters about this kind of " +

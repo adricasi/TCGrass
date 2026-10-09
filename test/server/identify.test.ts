@@ -95,6 +95,12 @@ describe("buildSystemPrompt", () => {
     expect(prompt).toContain('"none"');
   });
 
+  it("AC-003.6 tells the model that background subjects and similar kinds are 'none'", () => {
+    const prompt = buildSystemPrompt(expansion);
+    expect(prompt).toMatch(/catalogue kind in the background is not a match/);
+    expect(prompt).toMatch(/similar but different kind is also "none"/);
+  });
+
   it("AC-003.4 asks for screen detection and a flavor line that quotes no text, people or places", () => {
     const prompt = buildSystemPrompt(expansion);
     expect(prompt).toContain("is_photo_of_screen");
