@@ -9,7 +9,12 @@ name: Everyday Nature
 version: 0.1.0
 license:
   data: Apache-2.0
-  images: "TBD: depends on the image tool's terms; record tool + model here"
+  # AI-generated art: Google won't claim ownership of generated content, and its terms forbid
+  # presenting it as human-made, so it is labelled as AI-generated here and in the post.
+  images: >-
+    AI-generated with the Gemini app (Google), model: Gemini, by the expansion author.
+    Terms: Google Terms of Service, effective 2026-07-30 (https://policies.google.com/terms):
+    "Google won't claim ownership over that content". Checked 2026-10-09.
 
 rarity_odds: # rolled server-side on every capture; must sum to 100
   common: 70
