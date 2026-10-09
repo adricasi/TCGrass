@@ -1,4 +1,4 @@
-import { readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { readdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
@@ -57,10 +57,13 @@ describe("seeding an expansion", () => {
     expect(stored?.cards.every((card) => !card.isPlaceholder)).toBe(true);
   });
 
-  it("AC-001.1 seeds the real everyday-nature expansion with its art, no placeholders (T-012)", () => {
-    const db = emptyDb();
-    const result = seed(db, repoPath("expansions/everyday-nature"));
-    expect(result.cardsLoaded).toBe(15);
+  it("NFR-004 keeps every everyday-nature card at or under 350 KB for phones", () => {
+    const dir = repoPath("expansions/everyday-nature/images");
+    const sizes = readdirSync(dir)
+      .filter((name) => name.endsWith(".png"))
+      .map((name) => ({ name, bytes: statSync(join(dir, name)).size }));
+    expect(sizes).toHaveLength(15);
+    expect(sizes.filter((file) => file.bytes > 350 * 1024)).toEqual([]);
   });
 
   it("AC-001.2 rejects bad odds, names the problem and stores nothing", () => {

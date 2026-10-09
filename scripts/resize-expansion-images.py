@@ -7,14 +7,15 @@ Usage:
     python3 scripts/resize-expansion-images.py <expansion-dir> [--source <dir>]
 
 Reads <dir>/*.png (default: <expansion-dir>/images) and writes
-<expansion-dir>/images/<name>.png. Images already 768 px wide or narrower are left as they
-are, so running it twice does not degrade them. Needs Pillow (`pip install pillow`); it is a
-helper for expansion authors, not part of the app.
+<expansion-dir>/images/<name>.png. Images already 768 px wide or narrower are copied
+unchanged, so running it twice does not degrade them. Needs Pillow (`pip install pillow`);
+it is a helper for expansion authors, not part of the app.
 """
 
 from __future__ import annotations
 
 import argparse
+import shutil
 import sys
 from pathlib import Path
 
@@ -52,6 +53,9 @@ def main() -> int:
         out_path = target / original.name
         with Image.open(original) as image:
             if image.width <= TARGET_WIDTH:
+                # Already small: keep it as is, but it must still end up in the expansion.
+                if original.resolve() != out_path.resolve():
+                    shutil.copyfile(original, out_path)
                 print(f"  {original.name:<18} kept ({image.width}x{image.height})")
                 continue
             processed = resize_and_compress(image)

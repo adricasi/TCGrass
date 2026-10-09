@@ -53,7 +53,8 @@ export function fixtureDir(id: string): string {
 
 /**
  * Copy of a fixture expansion in a temp dir (removed after the test), without the art of
- * `withoutImages`, so tests can exercise missing-image and placeholder paths.
+ * `withoutImages`, so tests can exercise missing-image and placeholder paths. Call it inside
+ * a test: cleanup uses `onTestFinished`, which throws in `beforeAll` or a `describe` body.
  */
 export function copyFixture(id: string, withoutImages: string[] = []): string {
   const root = mkdtempSync(join(tmpdir(), "tcgrass-fixture-"));
