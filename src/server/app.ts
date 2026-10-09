@@ -9,17 +9,31 @@ import type { StoredExpansion } from "./expansion/repository.js";
 import type { Identifier } from "./identify/client.js";
 import { InFlightLimiter } from "./inflight.js";
 import type { Logger } from "./logger.js";
+import { requirePlayer } from "./players/auth.js";
+import type { Player } from "./players/service.js";
+import { SlidingWindowLimiter } from "./rate-limit.js";
 import { cardRoutes, SVG_CSP } from "./routes/cards.js";
 import { captureRoutes } from "./routes/captures.js";
 import { expansionRoutes } from "./routes/expansion.js";
+import { meRoutes, playerRoutes } from "./routes/players.js";
 
 export const MAX_IDENTIFICATIONS_IN_FLIGHT = 5;
 /** Photos being uploaded at once; bounds upload memory to about 10 × 5 MB (NFR-005). */
 export const MAX_UPLOADS_IN_FLIGHT = 10;
 
 export interface AppEnv {
-  Variables: { requestId: string };
+  /** `player` is set by `requirePlayer` on authenticated routes only. */
+  Variables: { requestId: string; player: Player };
 }
+
+/** The only /api routes reachable without a player secret (design.md § Interfaces). */
+export const PUBLIC_API_ROUTES = [
+  { method: "POST", path: "/api/players" },
+  { method: "GET", path: "/api/expansion" },
+] as const;
+
+/** Player creations per client IP: 10 per 60 minutes (AC-002.8). */
+export const PLAYER_CREATIONS_PER_IP = { limit: 10, windowMs: 60 * 60 * 1000 };
 
 export interface AppDeps {
   db: Db;
@@ -29,6 +43,10 @@ export interface AppDeps {
   logger: Logger;
   maxInFlight?: number;
   maxUploads?: number;
+  /** Replaces the per-IP creation limiter (tests use a fake clock). */
+  playerCreations?: SlidingWindowLimiter;
+  /** Read the client IP from X-Forwarded-For (only behind Caddy, TRUST_PROXY=true). */
+  trustProxy?: boolean;
 }
 
 /** Builds the API. Dependencies are injected so tests run it with a fake model. */
@@ -83,7 +101,6 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
   });
 
   // Reports DB reachability only (NFR-007).
-  // Reports DB reachability only (NFR-007).
   app.get("/healthz", (c) => {
     try {
       deps.db.prepare("SELECT 1").get();
@@ -98,7 +115,27 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
     }
   });
 
+  // Default deny: every /api route needs a player except the public ones (design.md
+  // § Interfaces), so a route added later cannot be public by accident (AC-002.5).
+  app.use("/api/*", requirePlayer(deps.db, PUBLIC_API_ROUTES));
+  // API answers are per player and some carry the secret: never cache them (AC-002.10).
+  app.use("/api/*", async (c, next) => {
+    await next();
+    c.header("Cache-Control", "no-store");
+  });
+
   app.route("/api/expansion", expansionRoutes(deps.expansion));
+  app.route(
+    "/api/players",
+    playerRoutes({
+      db: deps.db,
+      creations:
+        deps.playerCreations ??
+        new SlidingWindowLimiter(PLAYER_CREATIONS_PER_IP.limit, PLAYER_CREATIONS_PER_IP.windowMs),
+      trustProxy: deps.trustProxy ?? false,
+    }),
+  );
+  app.route("/api/me", meRoutes());
   app.route("/cards", cardRoutes(deps.db, logger));
 
   app.route(

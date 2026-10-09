@@ -99,8 +99,14 @@ describe("loadServerConfig", () => {
       logLevel: "info",
       logFilePath: undefined,
       databasePath: ".dev/test.db",
+      trustProxy: false,
     });
     expect(config.inference.model).toBe("gemma-3-12b-it");
+  });
+
+  it("NFR-001 trusts X-Forwarded-For only when TRUST_PROXY is exactly true", () => {
+    expect(loadServerConfig({ ...serverEnv, TRUST_PROXY: "true" }).trustProxy).toBe(true);
+    expect(loadServerConfig({ ...serverEnv, TRUST_PROXY: "" }).trustProxy).toBe(false);
   });
 
   it("AC-012.1 reads explicit port, log level and log file", () => {
@@ -123,6 +129,7 @@ describe("loadServerConfig", () => {
     ["PORT", { PORT: "99999" }],
     ["LOG_LEVEL", { LOG_LEVEL: "verbose" }],
     ["DATABASE_PATH", { DATABASE_PATH: "" }],
+    ["TRUST_PROXY", { TRUST_PROXY: "yes" }],
   ])("AC-012.2 refuses to start and names %s when it is missing or malformed", (key, override) => {
     expect(() => loadServerConfig({ ...serverEnv, ...override })).toThrow(key);
   });

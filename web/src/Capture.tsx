@@ -38,7 +38,14 @@ function cameraStateFor(error: unknown): CameraState {
  * Capture screen: live camera preview and shutter only. There is deliberately no file upload
  * fallback, so cards come from the real world (AC-003.1, AC-003.2).
  */
-export function Capture() {
+export function Capture({
+  secret,
+  onUnauthenticated,
+}: {
+  secret: string;
+  /** The server no longer knows this player (AC-002.7). */
+  onUnauthenticated: () => void;
+}) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [camera, setCamera] = useState<CameraState>("starting");
   const [busy, setBusy] = useState(false);
@@ -92,9 +99,13 @@ export function Capture() {
     setBusy(true);
     setMessage(null);
     try {
-      const result = await postCapture(await captureFrame(video));
+      const result = await postCapture(secret, await captureFrame(video));
       setMessage(describeResult(result));
     } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        onUnauthenticated();
+        return;
+      }
       setMessage(describeError(error));
     } finally {
       setBusy(false);
