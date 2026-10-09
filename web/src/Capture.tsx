@@ -37,16 +37,26 @@ function cameraStateFor(error: unknown): CameraState {
 export function Capture({
   secret,
   onUnauthenticated,
+  onLockedChange,
 }: {
   secret: string;
   /** The server no longer knows this player (AC-002.7). */
   onUnauthenticated: () => void;
+  /**
+   * True while a capture is in flight or a reveal is open: leaving the screen then would
+   * mint a card the player never sees (AC-006.1).
+   */
+  onLockedChange: (locked: boolean) => void;
 }) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [camera, setCamera] = useState<CameraState>("starting");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [revealed, setRevealed] = useState<CapturedCard | null>(null);
+
+  useEffect(() => {
+    onLockedChange(busy || revealed !== null);
+  }, [busy, revealed]);
 
   useEffect(() => {
     let stream: MediaStream | undefined;

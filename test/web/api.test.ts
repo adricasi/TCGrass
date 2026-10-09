@@ -1,6 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import { ApiError, createPlayer, getMe, postCapture } from "../../web/src/api.js";
+import {
+  ApiError,
+  createPlayer,
+  getBinder,
+  getExpansion,
+  getMe,
+  postCapture,
+} from "../../web/src/api.js";
 
 function stubFetch(response: Response) {
   const fetch = vi.fn<typeof globalThis.fetch>().mockResolvedValue(response);
@@ -78,5 +85,28 @@ describe("postCapture", () => {
   it("NFR-001 rejects a success response that does not match the schema", async () => {
     stubFetch(Response.json({ outcome: "legendary" }));
     await expect(postCapture("s3cret", photo)).rejects.toThrow();
+  });
+
+  it("AC-007.1 reads the binder with the player's secret in the header", async () => {
+    const fetch = stubFetch(Response.json({ owned: 0, total: 0, cards: [] }));
+    await expect(getBinder("s3cret")).resolves.toEqual({ owned: 0, total: 0, cards: [] });
+    const [url, init] = fetch.mock.calls[0] ?? [];
+    expect(url).toBe("/api/binder");
+    expect(new Headers(init?.headers).get("authorization")).toBe("Bearer s3cret");
+  });
+
+  it("AC-005.4 reads the public expansion odds without a secret", async () => {
+    const expansion = {
+      id: "everyday-nature",
+      name: "Everyday Nature",
+      version: "0.1.0",
+      rarityOdds: { common: 70, rare: 22, epic: 7, legendary: 1 },
+      cards: [],
+    };
+    const fetch = stubFetch(Response.json(expansion));
+    await expect(getExpansion()).resolves.toEqual(expansion);
+    const [url, init] = fetch.mock.calls[0] ?? [];
+    expect(url).toBe("/api/expansion");
+    expect(new Headers(init?.headers).has("authorization")).toBe(false);
   });
 });

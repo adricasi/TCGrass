@@ -12,6 +12,7 @@ import type { Logger } from "./logger.js";
 import { requirePlayer } from "./players/auth.js";
 import type { Player } from "./players/service.js";
 import { SlidingWindowLimiter } from "./rate-limit.js";
+import { binderRoutes } from "./routes/binder.js";
 import { cardRoutes, SVG_CSP } from "./routes/cards.js";
 import { captureRoutes } from "./routes/captures.js";
 import { expansionRoutes } from "./routes/expansion.js";
@@ -143,6 +144,7 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
     }),
   );
   app.route("/api/me", meRoutes());
+  app.route("/api/binder", binderRoutes(deps.db, deps.expansion));
   app.route("/cards", cardRoutes(deps.db, logger));
 
   app.route(

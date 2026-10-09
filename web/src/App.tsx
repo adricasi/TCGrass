@@ -1,7 +1,10 @@
 import { useEffect, useState } from "preact/hooks";
 
+import { Binder } from "./Binder.js";
 import { Capture } from "./Capture.js";
 import { FirstRun } from "./FirstRun.js";
+import { Nav, type Tab } from "./Nav.js";
+import { Odds } from "./Odds.js";
 import {
   forgetPlayer,
   resumeSession,
@@ -24,10 +27,16 @@ const store = deviceStore();
 
 export function App() {
   const [session, setSession] = useState<Session | "loading">("loading");
+  const [tab, setTab] = useState<Tab>("capture");
+  const [captureLocked, setCaptureLocked] = useState(false);
 
   useEffect(() => {
     void resumeSession(store).then(setSession);
   }, []);
+
+  function notFound(): void {
+    setSession({ kind: "not-found" });
+  }
 
   if (session === "loading") {
     return <p>Loading…</p>;
@@ -77,12 +86,16 @@ export function App() {
           to keep your cards.
         </p>
       )}
-      <Capture
-        secret={session.secret}
-        onUnauthenticated={() => {
-          setSession({ kind: "not-found" });
-        }}
-      />
+      {tab === "capture" && (
+        <Capture
+          secret={session.secret}
+          onUnauthenticated={notFound}
+          onLockedChange={setCaptureLocked}
+        />
+      )}
+      {tab === "binder" && <Binder secret={session.secret} onUnauthenticated={notFound} />}
+      {tab === "odds" && <Odds />}
+      <Nav current={tab} onChange={setTab} disabled={captureLocked} />
     </>
   );
 }
