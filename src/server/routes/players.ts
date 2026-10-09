@@ -8,7 +8,7 @@ import {
   type MeResponse,
 } from "../../shared/schemas/players.js";
 import type { AppEnv } from "../app.js";
-import { clientIp } from "../client-ip.js";
+import { clientIp, rateLimitKey } from "../client-ip.js";
 import type { Db } from "../db/connection.js";
 import { errorJson } from "../errors.js";
 import { createPlayer } from "../players/service.js";
@@ -45,7 +45,7 @@ export function playerRoutes({ db, creations, trustProxy }: PlayerRouteDeps): Ho
         return errorJson(c, 400, "invalid_display_name", DISPLAY_NAME_RULE);
       }
       // Counted only for valid requests, so typos do not use up the allowance (AC-002.8).
-      if (!creations.tryHit(clientIp(c, trustProxy))) {
+      if (!creations.tryHit(rateLimitKey(clientIp(c, trustProxy)))) {
         return errorJson(
           c,
           429,

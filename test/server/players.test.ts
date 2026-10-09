@@ -214,6 +214,20 @@ describe("POST /api/players", () => {
     }
   });
 
+  it("AC-002.8 counts one IPv6 /64 as one client, so rotating addresses does not bypass it", async () => {
+    const { app } = playersApp();
+    for (let index = 0; index < 10; index += 1) {
+      const ip = `2001:db8:1:2::${(index + 1).toString(16)}`;
+      expect((await postPlayer(app, { displayName: `P${index}` }, ip)).status).toBe(201);
+    }
+    expect((await postPlayer(app, { displayName: "Rotated" }, "2001:db8:1:2:ffff::9")).status).toBe(
+      429,
+    );
+    expect((await postPlayer(app, { displayName: "Next /64" }, "2001:db8:1:3::1")).status).toBe(
+      201,
+    );
+  });
+
   it("NFR-007 never logs the secret", async () => {
     const { app, log } = playersApp();
     const { secret } = createPlayerResponseSchema.parse(
@@ -350,17 +364,29 @@ describe("players service", () => {
 });
 
 describe("SlidingWindowLimiter", () => {
-  it("NFR-005 forgets idle keys so memory stays bounded", () => {
+  it("NFR-005 prunes idle keys at most once per tenth of the window", () => {
     let now = 0;
-    const limiter = new SlidingWindowLimiter(1, 10, () => now);
-    for (let index = 0; index < 1000; index += 1) {
+    const limiter = new SlidingWindowLimiter(1, 100, () => now);
+    for (let index = 0; index < 50; index += 1) {
       limiter.tryHit(`ip-${index}`);
     }
-    now = 10;
+    now = 100; // all 50 windows have expired; the prune interval (10) has passed
     limiter.tryHit("fresh");
-    // Pruned keys start a new window; a key still inside its window would be refused.
-    expect(limiter.tryHit("ip-0")).toBe(true);
-    expect(limiter.tryHit("fresh")).toBe(false);
+    expect(limiter.trackedKeys).toBe(1);
+    now = 105; // within the prune interval: no scan, nothing removed
+    limiter.tryHit("second");
+    expect(limiter.trackedKeys).toBe(2);
+  });
+
+  it("NFR-005 refuses unseen keys once maxKeys are tracked, without resetting others", () => {
+    let now = 0;
+    const limiter = new SlidingWindowLimiter(2, 1000, () => now, 3);
+    expect(["a", "b", "c"].map((key) => limiter.tryHit(key))).toEqual([true, true, true]);
+    expect(limiter.tryHit("flood")).toBe(false);
+    expect(limiter.tryHit("a")).toBe(true); // known keys keep their own window
+    expect(limiter.tryHit("a")).toBe(false);
+    now = 1000; // windows over: pruning frees room for new keys
+    expect(limiter.tryHit("flood")).toBe(true);
   });
 
   it("AC-002.8 allows `limit` hits per key per window", () => {
