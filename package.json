@@ -5,20 +5,24 @@
   "description": "Collectible card game: photograph real things to earn illustrated cards, then trade with friends.",
   "type": "module",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.12"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
-    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json && vite build web",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p web",
     "lint": "eslint .",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "vitest run",
     "test:watch": "vitest",
-    "spike": "node --env-file-if-exists=.env --import tsx scripts/spike-identify.ts"
+    "spike": "node --env-file-if-exists=.env --import tsx scripts/spike-identify.ts",
+    "dev:api": "node --env-file-if-exists=.env --import tsx --watch src/server/main.ts",
+    "dev:web": "vite web",
+    "start": "node dist/server/main.js"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
+    "@preact/preset-vite": "^2.10.6",
     "@types/node": "^22.0.0",
     "@vitest/coverage-v8": "^5.0.3",
     "eslint": "^9.0.0",
@@ -26,9 +30,14 @@
     "tsx": "^4.23.15",
     "typescript": "^5.6.0",
     "typescript-eslint": "^8.0.0",
+    "vite": "^8.3.4",
     "vitest": "^5.0.3"
   },
   "dependencies": {
+    "@hono/node-server": "^2.1.4",
+    "hono": "^4.13.13",
+    "pino": "^10.4.0",
+    "preact": "^11.0.1",
     "yaml": "^2.9.1",
     "zod": "^4.6.5"
   }

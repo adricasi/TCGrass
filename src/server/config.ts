@@ -41,6 +41,16 @@ const configSchema = z.object({
   IDENTIFY_MIN_CONFIDENCE: z.preprocess(emptyAsUnset, z.coerce.number().min(0).max(1).default(0.5)),
 });
 
+const serverConfigSchema = configSchema.extend({
+  ACTIVE_EXPANSION: z.string().regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/),
+  PORT: z.preprocess(emptyAsUnset, z.coerce.number().int().min(1).max(65_535).default(3000)),
+  LOG_LEVEL: z.preprocess(
+    emptyAsUnset,
+    z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
+  ),
+  LOG_FILE_PATH: z.preprocess(emptyAsUnset, z.string().optional()),
+});
+
 export interface Config {
   inference: {
     baseUrl: string;
@@ -50,17 +60,27 @@ export interface Config {
   identifyMinConfidence: number;
 }
 
+export interface ServerConfig extends Config {
+  activeExpansion: string;
+  port: number;
+  logLevel: "fatal" | "error" | "warn" | "info" | "debug" | "trace";
+  logFilePath: string | undefined;
+}
+
 /**
- * Parses the environment once at startup (AC-012.1, AC-012.2). Errors name the invalid
- * keys only, never their values, because some of them are secrets.
+ * Parses with `schema` or throws naming the invalid keys only, never their values, because
+ * some of them are secrets (AC-012.2).
  */
-export function loadConfig(env: NodeJS.ProcessEnv): Config {
-  const result = configSchema.safeParse(env);
+function parseEnv<T extends z.ZodType>(schema: T, env: NodeJS.ProcessEnv): z.output<T> {
+  const result = schema.safeParse(env);
   if (!result.success) {
     const keys = [...new Set(result.error.issues.map((issue) => String(issue.path[0])))];
     throw new ConfigError(`Missing or invalid configuration: ${keys.join(", ")}`);
   }
-  const parsed = result.data;
+  return result.data;
+}
+
+function toConfig(parsed: z.output<typeof configSchema>): Config {
   return {
     inference: {
       baseUrl: parsed.INFERENCE_BASE_URL.replace(/\/+$/, ""),
@@ -68,5 +88,22 @@ export function loadConfig(env: NodeJS.ProcessEnv): Config {
       apiKey: parsed.INFERENCE_API_KEY,
     },
     identifyMinConfidence: parsed.IDENTIFY_MIN_CONFIDENCE,
+  };
+}
+
+/** Inference settings only, for tools such as the spike script (AC-012.1, AC-012.2). */
+export function loadConfig(env: NodeJS.ProcessEnv): Config {
+  return toConfig(parseEnv(configSchema, env));
+}
+
+/** Everything the API server needs, parsed once at startup (AC-012.1, AC-012.2). */
+export function loadServerConfig(env: NodeJS.ProcessEnv): ServerConfig {
+  const parsed = parseEnv(serverConfigSchema, env);
+  return {
+    ...toConfig(parsed),
+    activeExpansion: parsed.ACTIVE_EXPANSION,
+    port: parsed.PORT,
+    logLevel: parsed.LOG_LEVEL,
+    logFilePath: parsed.LOG_FILE_PATH,
   };
 }
