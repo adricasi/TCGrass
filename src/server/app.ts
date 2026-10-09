@@ -32,6 +32,9 @@ export const PUBLIC_API_ROUTES = [
   { method: "GET", path: "/api/expansion" },
 ] as const;
 
+/** Photos per player that pass the type and size checks: 10 per 60 s (AC-003.11). */
+export const CAPTURES_PER_PLAYER = { limit: 10, windowMs: 60 * 1000 };
+
 /** Player creations per client IP: 10 per 60 minutes (AC-002.8). */
 export const PLAYER_CREATIONS_PER_IP = { limit: 10, windowMs: 60 * 60 * 1000 };
 
@@ -47,6 +50,10 @@ export interface AppDeps {
   playerCreations?: SlidingWindowLimiter;
   /** Read the client IP from X-Forwarded-For (only behind Caddy, TRUST_PROXY=true). */
   trustProxy?: boolean;
+  /** Replaces the per-player capture limiter (tests use a fake clock). */
+  capturesPerPlayer?: SlidingWindowLimiter;
+  /** Random source for rarity rolls (tests); `crypto.randomInt` otherwise. */
+  random?: (max: number) => number;
 }
 
 /** Builds the API. Dependencies are injected so tests run it with a fake model. */
@@ -141,7 +148,13 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
   app.route(
     "/api/captures",
     captureRoutes({
+      db: deps.db,
+      expansion: deps.expansion,
       identify: deps.identify,
+      perPlayer:
+        deps.capturesPerPlayer ??
+        new SlidingWindowLimiter(CAPTURES_PER_PLAYER.limit, CAPTURES_PER_PLAYER.windowMs),
+      ...(deps.random === undefined ? {} : { random: deps.random }),
       inFlight: new InFlightLimiter(deps.maxInFlight ?? MAX_IDENTIFICATIONS_IN_FLIGHT),
       uploads: new InFlightLimiter(deps.maxUploads ?? MAX_UPLOADS_IN_FLIGHT),
       logger,

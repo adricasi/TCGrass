@@ -16,8 +16,17 @@ describe("postCapture", () => {
   });
 
   it("AC-003.3 posts the photo as multipart field 'photo' to /api/captures", async () => {
-    const fetch = stubFetch(Response.json({ outcome: "card", cardId: "oak" }));
-    await expect(postCapture("s3cret", photo)).resolves.toEqual({ outcome: "card", cardId: "oak" });
+    const card = {
+      id: 1,
+      cardId: "oak",
+      name: "Oak",
+      category: "tree",
+      rarity: "rare",
+      flavorLine: null,
+      imageUrl: "/cards/everyday-nature/oak",
+    };
+    const fetch = stubFetch(Response.json({ outcome: "card", card }));
+    await expect(postCapture("s3cret", photo)).resolves.toEqual({ outcome: "card", card });
 
     const [url, init] = fetch.mock.calls[0] ?? [];
     expect(url).toBe("/api/captures");

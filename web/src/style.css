@@ -69,3 +69,116 @@ main {
 .player {
   text-align: center;
 }
+
+/* Card reveal (AC-006.1–006.5) */
+.reveal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  padding: 16px;
+  background: rgb(0 0 0 / 80%);
+  /* Short screens: scroll instead of clipping the dismiss button (AC-006.5). */
+  overflow-y: auto;
+  justify-content: safe center;
+}
+
+.card {
+  position: relative;
+  width: min(100%, 360px);
+  padding: 10px;
+  border: 6px solid var(--frame);
+  border-radius: 16px;
+  background: #fffaf0;
+  color: #222;
+  overflow: hidden;
+}
+
+.card-art {
+  display: block;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  max-height: 50dvh;
+  object-fit: cover;
+  border-radius: 8px;
+}
+
+.card-name {
+  margin: 8px 0 0;
+}
+
+.card-meta {
+  display: flex;
+  justify-content: space-between;
+  margin: 4px 0;
+}
+
+.card-rarity {
+  padding: 0 8px;
+  border-radius: 999px;
+  background: var(--frame);
+  color: #fff;
+  font-weight: bold;
+}
+
+.card-flavor {
+  font-style: italic;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.frame-common {
+  --frame: #7d8a96;
+}
+.frame-rare {
+  --frame: #2f6fd6;
+}
+.frame-epic {
+  --frame: #8a3fd1;
+}
+.frame-legendary {
+  --frame: #d49a16;
+}
+
+/* Animated foil for Epic and Legendary only (AC-006.2). */
+.foil::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    115deg,
+    transparent 30%,
+    rgb(255 255 255 / 55%) 45%,
+    rgb(255 215 120 / 35%) 50%,
+    transparent 65%
+  );
+  background-size: 250% 100%;
+  animation: foil-sweep 2.4s linear infinite;
+  mix-blend-mode: screen;
+}
+
+@keyframes foil-sweep {
+  from {
+    background-position: 150% 0;
+  }
+  to {
+    background-position: -100% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .foil::after {
+    animation: none;
+    background-position: 50% 0;
+  }
+}
+
+.dismiss {
+  font-size: 1.1rem;
+  padding: 12px 24px;
+  border-radius: 999px;
+}

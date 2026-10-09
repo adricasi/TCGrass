@@ -8,7 +8,7 @@ import { fileURLToPath } from "node:url";
 import type { Hono } from "hono";
 import { onTestFinished } from "vitest";
 
-import { type AppEnv, createApp } from "../../src/server/app.js";
+import { type AppDeps, type AppEnv, createApp } from "../../src/server/app.js";
 import { type Db, openDatabase } from "../../src/server/db/connection.js";
 import { migrate } from "../../src/server/db/migrate.js";
 import { loadExpansionFolder } from "../../src/server/expansion/load.js";
@@ -88,10 +88,9 @@ export function seededDb(fixture = "fixture-a"): { db: Db; expansion: StoredExpa
   return { db, expansion };
 }
 
-export interface TestAppOptions {
-  maxInFlight?: number;
-  maxUploads?: number;
-}
+export type TestAppOptions = Partial<
+  Pick<AppDeps, "maxInFlight" | "maxUploads" | "capturesPerPlayer" | "random" | "playerCreations">
+>;
 
 /** Creates a player and returns the header that authenticates as them. */
 export function playerAuth(db: Db, displayName = "Tester"): Record<string, string> {

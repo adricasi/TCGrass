@@ -1,17 +1,27 @@
 import { z } from "zod";
 
-export const captureOutcomeSchema = z.enum(["card", "none", "screen", "retry"]);
-export type CaptureOutcome = z.infer<typeof captureOutcomeSchema>;
+import { RARITIES } from "../expansion.js";
 
-/**
- * Response of `POST /api/captures`. Temporary T-002a shape: there is no DB yet, so a match
- * returns only the catalogue `cardId`. T-005 replaces it with the minted `card` object from
- * design.md § Interfaces.
- */
-export const captureResponseSchema = z
+export const raritySchema = z.enum(RARITIES);
+
+/** A minted card as returned by a capture (design.md § Interfaces). */
+export const capturedCardSchema = z
   .object({
-    outcome: captureOutcomeSchema,
-    cardId: z.string().optional(),
+    id: z.number().int(),
+    cardId: z.string(),
+    name: z.string(),
+    category: z.string(),
+    rarity: raritySchema,
+    flavorLine: z.string().nullable(),
+    imageUrl: z.string(),
   })
   .strict();
+export type CapturedCard = z.infer<typeof capturedCardSchema>;
+
+/** Response of `POST /api/captures`: `card` is present only when a card was minted. */
+export const captureResponseSchema = z.discriminatedUnion("outcome", [
+  z.object({ outcome: z.literal("card"), card: capturedCardSchema }).strict(),
+  z.object({ outcome: z.enum(["none", "screen", "retry"]) }).strict(),
+]);
 export type CaptureResponse = z.infer<typeof captureResponseSchema>;
+export type CaptureOutcome = CaptureResponse["outcome"];

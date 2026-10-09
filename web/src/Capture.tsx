@@ -1,26 +1,22 @@
 import { useEffect, useRef, useState } from "preact/hooks";
 
-import type { CaptureResponse } from "../../src/shared/schemas/captures.js";
+import type { CapturedCard, CaptureResponse } from "../../src/shared/schemas/captures.js";
 import { ApiError, postCapture } from "./api.js";
 import { captureFrame } from "./capture-frame.js";
+import { Reveal } from "./Reveal.js";
 
 type CameraState = "starting" | "ready" | "denied" | "busy-elsewhere" | "insecure" | "unavailable";
 
+/** Messages for captures that mint nothing (AC-003.6, AC-003.7, AC-003.9). */
 const RESULT_TEXT: Record<Exclude<CaptureResponse["outcome"], "card">, string> = {
-  none: "No card here — try something else.",
+  none: "No card here — try something else",
   screen: "That looks like a screen or a picture. Photograph the real thing!",
   retry: "The card spirits didn't answer in time. Try again.",
 };
 
-function describeResult(result: CaptureResponse): string {
-  return result.outcome === "card"
-    ? `You found: ${result.cardId ?? "a card"}!`
-    : RESULT_TEXT[result.outcome];
-}
-
 function describeError(error: unknown): string {
   // Server messages for these codes are written for players (design § Interfaces).
-  if (error instanceof ApiError && [413, 415, 503].includes(error.status)) {
+  if (error instanceof ApiError && [413, 415, 429, 503].includes(error.status)) {
     return error.message;
   }
   return "Something went wrong. Try again.";
@@ -50,6 +46,7 @@ export function Capture({
   const [camera, setCamera] = useState<CameraState>("starting");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [revealed, setRevealed] = useState<CapturedCard | null>(null);
 
   useEffect(() => {
     let stream: MediaStream | undefined;
@@ -100,7 +97,11 @@ export function Capture({
     setMessage(null);
     try {
       const result = await postCapture(secret, await captureFrame(video));
-      setMessage(describeResult(result));
+      if (result.outcome === "card") {
+        setRevealed(result.card);
+      } else {
+        setMessage(RESULT_TEXT[result.outcome]);
+      }
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
         onUnauthenticated();
@@ -155,7 +156,7 @@ export function Capture({
       <button
         type="button"
         class="shutter"
-        disabled={camera !== "ready" || busy}
+        disabled={camera !== "ready" || busy || revealed !== null}
         onClick={() => void takePhoto()}
       >
         {busy ? "Looking…" : "Capture"}
@@ -163,6 +164,15 @@ export function Capture({
       <p class="result" aria-live="polite">
         {message}
       </p>
+      {/* The camera stays mounted under the reveal, so dismissing returns to it (AC-006.5). */}
+      {revealed !== null && (
+        <Reveal
+          card={revealed}
+          onDismiss={() => {
+            setRevealed(null);
+          }}
+        />
+      )}
     </section>
   );
 }

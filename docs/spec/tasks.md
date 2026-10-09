@@ -107,7 +107,7 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
   - Done when: tests for AC-002.1–002.10 and AC-013.2 pass;
     reopening the app on the phone resumes the same player.
 
-- [ ] T-005: Capture → mint → instant reveal
+- [~] T-005: Capture → mint → instant reveal
   - Estimate: 1.5 h
   - Requirements: REQ-003, REQ-004, REQ-005, REQ-006
   - Depends on: T-004
