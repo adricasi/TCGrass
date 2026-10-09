@@ -21,16 +21,16 @@ async function errorCode(response: Response): Promise<string> {
 }
 
 describe("POST /api/captures", () => {
-  it("AC-004.2 sends the photo to the identifier and returns the matched card id", async () => {
+  it("AC-004.2 sends the photo to the identifier and returns the minted card", async () => {
     const model = fakeIdentifier(oak);
     const { app, auth } = testApp(model.identify);
 
     const response = await postPhoto(app, auth, photoForm(JPEG_BYTES));
 
     expect(response.status).toBe(200);
-    expect(captureResponseSchema.parse(await response.json())).toEqual({
+    expect(captureResponseSchema.parse(await response.json())).toMatchObject({
       outcome: "card",
-      cardId: "oak",
+      card: { cardId: "oak" },
     });
     expect(model.photos).toHaveLength(1);
     expect(model.photos[0]?.mimeType).toBe("image/jpeg");
@@ -183,8 +183,9 @@ describe("POST /api/captures", () => {
   it("AC-003.12 frees the slot when identification throws", async () => {
     const model = fakeIdentifier(() => Promise.reject(new Error("boom")));
     const { app, auth } = testApp(model.identify, { maxInFlight: 1 });
-    expect((await postPhoto(app, auth, photoForm(JPEG_BYTES))).status).toBe(500);
-    expect((await postPhoto(app, auth, photoForm(JPEG_BYTES))).status).toBe(500);
+    // A throwing identifier is a "retry" (AC-003.9); the single slot must be free again.
+    expect((await postPhoto(app, auth, photoForm(JPEG_BYTES))).status).toBe(200);
+    expect((await postPhoto(app, auth, photoForm(JPEG_BYTES))).status).toBe(200);
     expect(model.photos).toHaveLength(2);
   });
 });

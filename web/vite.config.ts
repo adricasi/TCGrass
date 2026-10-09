@@ -8,6 +8,9 @@ export default defineConfig({
   build: { outDir: "../dist/web", emptyOutDir: true },
   server: {
     // In development the API runs separately; in production it serves the built PWA itself.
-    proxy: { "/api": `http://localhost:${apiPort}` },
+    proxy: {
+      "/api": `http://localhost:${apiPort}`,
+      "/cards": `http://localhost:${apiPort}`,
+    },
   },
 });
