@@ -4,9 +4,13 @@
  *
  * Bounded against floods of distinct keys: idle keys are pruned at most once per
  * `windowMs / 10` (so a request never pays a full scan), and once `maxKeys` keys are
- * tracked, hits from unseen keys are refused until pruning frees room. Refusing (rather
- * than evicting old keys) means a flood cannot reset other clients' windows.
+ * tracked, unseen keys share one overflow bucket with `overflowLimit` hits per window.
+ * So memory stays bounded, a flood cannot reset other clients' windows (nothing is
+ * evicted), and it cannot lock every new client out either: they keep a shared allowance.
  */
+/** Shared bucket for unseen keys while the table is full; cannot collide with an IP key. */
+const OVERFLOW_KEY = "\u0000overflow";
+
 export class SlidingWindowLimiter {
   readonly #hits = new Map<string, number[]>();
   readonly #pruneIntervalMs: number;
@@ -17,6 +21,7 @@ export class SlidingWindowLimiter {
     readonly windowMs: number,
     private readonly now: () => number = Date.now,
     readonly maxKeys = 10_000,
+    readonly overflowLimit = limit * 10,
   ) {
     this.#pruneIntervalMs = Math.max(1, Math.floor(windowMs / 10));
     this.#lastPrune = now();
@@ -27,17 +32,16 @@ export class SlidingWindowLimiter {
     if (now - this.#lastPrune >= this.#pruneIntervalMs) {
       this.#prune(now);
     }
-    const previous = this.#hits.get(key);
-    if (previous === undefined && this.#hits.size >= this.maxKeys) {
-      return false;
-    }
-    const recent = (previous ?? []).filter((time) => now - time < this.windowMs);
-    if (recent.length >= this.limit) {
-      this.#hits.set(key, recent);
+    const overflow = !this.#hits.has(key) && this.#hits.size >= this.maxKeys;
+    const bucket = overflow ? OVERFLOW_KEY : key;
+    const limit = overflow ? this.overflowLimit : this.limit;
+    const recent = (this.#hits.get(bucket) ?? []).filter((time) => now - time < this.windowMs);
+    if (recent.length >= limit) {
+      this.#hits.set(bucket, recent);
       return false;
     }
     recent.push(now);
-    this.#hits.set(key, recent);
+    this.#hits.set(bucket, recent);
     return true;
   }
 

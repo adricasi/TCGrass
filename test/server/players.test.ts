@@ -378,15 +378,23 @@ describe("SlidingWindowLimiter", () => {
     expect(limiter.trackedKeys).toBe(2);
   });
 
-  it("NFR-005 refuses unseen keys once maxKeys are tracked, without resetting others", () => {
+  it("NFR-005 sends unseen keys to a shared overflow bucket once maxKeys are tracked", () => {
     let now = 0;
-    const limiter = new SlidingWindowLimiter(2, 1000, () => now, 3);
+    const limiter = new SlidingWindowLimiter(2, 1000, () => now, 3, 4);
     expect(["a", "b", "c"].map((key) => limiter.tryHit(key))).toEqual([true, true, true]);
-    expect(limiter.tryHit("flood")).toBe(false);
-    expect(limiter.tryHit("a")).toBe(true); // known keys keep their own window
-    expect(limiter.tryHit("a")).toBe(false);
-    now = 1000; // windows over: pruning frees room for new keys
-    expect(limiter.tryHit("flood")).toBe(true);
+    // Table full: new clients are not locked out, they share 4 hits per window.
+    expect(["n1", "n2", "n3", "n4"].map((key) => limiter.tryHit(key))).toEqual([
+      true,
+      true,
+      true,
+      true,
+    ]);
+    expect(limiter.tryHit("n5")).toBe(false);
+    expect(limiter.trackedKeys).toBe(4); // 3 clients + the overflow bucket, not 8
+    // Known keys keep their own window: nothing was evicted or reset.
+    expect([limiter.tryHit("a"), limiter.tryHit("a")]).toEqual([true, false]);
+    now = 1000; // windows over: pruning frees room, new keys get their own window again
+    expect(limiter.tryHit("n5")).toBe(true);
   });
 
   it("AC-002.8 allows `limit` hits per key per window", () => {
