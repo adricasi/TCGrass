@@ -1,0 +1,31 @@
+# Test fixture for REQ-001 (AC-001.7): a second expansion must load with no code changes.
+id: fixture-a
+name: Fixture A
+version: 1.0.0
+license:
+  data: Apache-2.0
+  images: "Test fixture: 1x1 PNGs made in code"
+rarity_odds:
+  common: 60
+  rare: 30
+  epic: 9
+  legendary: 1
+style_prompt: Flat test style.
+identification:
+  instructions: Choose the matching card or none.
+cards:
+  - id: oak
+    name: Oak
+    category: tree
+    identify_hint: A oak.
+    art_prompt: A oak.
+  - id: rose
+    name: Rose
+    category: flower
+    identify_hint: A rose.
+    art_prompt: A rose.
+  - id: fox
+    name: Fox
+    category: animal
+    identify_hint: A fox.
+    art_prompt: A fox.

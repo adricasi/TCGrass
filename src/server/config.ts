@@ -49,7 +49,10 @@ const serverConfigSchema = configSchema.extend({
     z.enum(["fatal", "error", "warn", "info", "debug", "trace"]).default("info"),
   ),
   LOG_FILE_PATH: z.preprocess(emptyAsUnset, z.string().optional()),
+  DATABASE_PATH: z.string().trim().min(1),
 });
+
+const databaseConfigSchema = z.object({ DATABASE_PATH: z.string().trim().min(1) });
 
 export interface Config {
   inference: {
@@ -65,6 +68,7 @@ export interface ServerConfig extends Config {
   port: number;
   logLevel: "fatal" | "error" | "warn" | "info" | "debug" | "trace";
   logFilePath: string | undefined;
+  databasePath: string;
 }
 
 /**
@@ -105,5 +109,11 @@ export function loadServerConfig(env: NodeJS.ProcessEnv): ServerConfig {
     port: parsed.PORT,
     logLevel: parsed.LOG_LEVEL,
     logFilePath: parsed.LOG_FILE_PATH,
+    databasePath: parsed.DATABASE_PATH,
   };
+}
+
+/** Only the database location, for the seed command. */
+export function loadDatabasePath(env: NodeJS.ProcessEnv): string {
+  return parseEnv(databaseConfigSchema, env).DATABASE_PATH;
 }

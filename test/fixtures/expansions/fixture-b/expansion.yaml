@@ -1,0 +1,26 @@
+# Test fixture for REQ-001 (AC-001.7): a second expansion must load with no code changes.
+id: fixture-b
+name: Fixture B
+version: 1.0.0
+license:
+  data: Apache-2.0
+  images: "Test fixture: 1x1 PNGs made in code"
+rarity_odds:
+  common: 50
+  rare: 30
+  epic: 15
+  legendary: 5
+style_prompt: Flat test style.
+identification:
+  instructions: Choose the matching card or none.
+cards:
+  - id: cactus
+    name: Cactus
+    category: plant
+    identify_hint: A cactus.
+    art_prompt: A cactus.
+  - id: gull
+    name: Seagull
+    category: bird
+    identify_hint: A seagull.
+    art_prompt: A seagull.
