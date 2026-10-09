@@ -1,0 +1,111 @@
+# Everyday Nature: the launch expansion for TCGrass.
+# Images: generate one per card with `style_prompt` + the card's `art_prompt`, save as
+# images/<card id>.png (3:4 portrait, e.g. 768x1024).
+# Card choice favours subjects that are common in temperate towns and visually distinct,
+# so Gemma can tell them apart (validated with the 20-photo spike; swap cards that fail).
+
+id: everyday-nature
+name: Everyday Nature
+version: 0.1.0
+license:
+  data: Apache-2.0
+  images: "TBD: depends on the image tool's terms; record tool + model here"
+
+rarity_odds: # rolled server-side on every capture; must sum to 100
+  common: 70
+  rare: 22
+  epic: 7
+  legendary: 1
+
+style_prompt: >-
+  Watercolour field guide illustration, soft translucent washes, fine sepia ink outlines,
+  subtle cream paper texture, single subject centred, plain light background with a faint
+  wash, vintage naturalist plate style, gentle natural colours, no text, no border, no frame.
+
+identification:
+  instructions: >-
+    Choose the single catalogue card that best matches the main subject of the photo.
+    Answer "none" if no card matches or the subject is unclear. Set is_photo_of_screen
+    true if the photo shows a screen, a printed picture or a drawing instead of the real thing.
+
+cards:
+  # --- Trees ---
+  - id: pine
+    name: Pine
+    category: tree
+    identify_hint: Conifer with long needles in bundles, scaly bark, pine cones.
+    art_prompt: A pine tree with long green needles, rough reddish bark and two hanging pine cones.
+  - id: oak
+    name: Oak
+    category: tree
+    identify_hint: Broadleaf tree with lobed leaves and/or acorns.
+    art_prompt: A sturdy oak tree in early autumn, lobed leaves turning gold, a few acorns at its roots.
+  - id: palm
+    name: Palm
+    category: tree
+    identify_hint: Tall unbranched trunk with a crown of large fan or feather leaves.
+    art_prompt: A tall palm tree with a slender textured trunk and a crown of feathery fronds.
+  - id: birch
+    name: Birch
+    category: tree
+    identify_hint: White or silver bark with dark horizontal marks, small toothed leaves.
+    art_prompt: A silver birch with white papery bark marked by dark lines, small yellowing leaves.
+  - id: fruit-tree
+    name: Fruit Tree
+    category: tree
+    identify_hint: Any tree visibly bearing fruit (apple, orange, lemon, fig, etc.).
+    art_prompt: A small orchard tree heavy with red apples, a few fallen apples in the grass.
+
+  # --- Flowers ---
+  - id: rose
+    name: Rose
+    category: flower
+    identify_hint: Layered petals in a spiral, thorny stems.
+    art_prompt: A single open red rose with layered petals, a thorny stem and two leaves.
+  - id: daisy
+    name: Daisy
+    category: flower
+    identify_hint: White ray petals around a yellow centre.
+    art_prompt: A small cluster of white daisies with bright yellow centres in short grass.
+  - id: dandelion
+    name: Dandelion
+    category: flower
+    identify_hint: Yellow composite flower or white seed puffball, jagged leaves.
+    art_prompt: A yellow dandelion flower beside a white seed puffball releasing a few seeds.
+  - id: lavender
+    name: Lavender
+    category: flower
+    identify_hint: Spikes of small purple flowers on grey-green stems.
+    art_prompt: A bunch of lavender spikes with tiny purple flowers and silvery stems.
+  - id: geranium
+    name: Geranium
+    category: flower
+    identify_hint: Rounded clusters of red, pink or white flowers, often in pots or on balconies.
+    art_prompt: A terracotta pot of bright red geraniums with rounded scalloped leaves.
+
+  # --- Domestic animals ---
+  - id: dog
+    name: Dog
+    category: animal
+    identify_hint: Any domestic dog.
+    art_prompt: A friendly medium-sized dog sitting attentively, ears perked, tail curled.
+  - id: cat
+    name: Cat
+    category: animal
+    identify_hint: Any domestic cat.
+    art_prompt: A tabby cat sitting upright with its tail wrapped around its paws.
+  - id: pigeon
+    name: City Pigeon
+    category: animal
+    identify_hint: Feral/rock pigeon, grey with iridescent neck feathers.
+    art_prompt: A grey city pigeon with an iridescent green and purple neck, standing on cobblestones.
+  - id: chicken
+    name: Chicken
+    category: animal
+    identify_hint: Domestic chicken or rooster.
+    art_prompt: A brown hen with a red comb pecking at grain on the ground.
+  - id: horse
+    name: Horse
+    category: animal
+    identify_hint: Domestic horse or pony.
+    art_prompt: A chestnut horse standing in a meadow, mane lifted by the wind.
