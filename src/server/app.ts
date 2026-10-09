@@ -3,11 +3,15 @@ import { randomUUID } from "node:crypto";
 import { Hono } from "hono";
 import { secureHeaders } from "hono/secure-headers";
 
+import type { Db } from "./db/connection.js";
 import { errorJson } from "./errors.js";
+import type { StoredExpansion } from "./expansion/repository.js";
 import type { Identifier } from "./identify/client.js";
 import { InFlightLimiter } from "./inflight.js";
 import type { Logger } from "./logger.js";
+import { cardRoutes, SVG_CSP } from "./routes/cards.js";
 import { captureRoutes } from "./routes/captures.js";
+import { expansionRoutes } from "./routes/expansion.js";
 
 export const MAX_IDENTIFICATIONS_IN_FLIGHT = 5;
 /** Photos being uploaded at once; bounds upload memory to about 10 × 5 MB (NFR-005). */
@@ -18,6 +22,9 @@ export interface AppEnv {
 }
 
 export interface AppDeps {
+  db: Db;
+  /** The active expansion, loaded from the DB at startup. */
+  expansion: StoredExpansion;
   identify: Identifier;
   logger: Logger;
   maxInFlight?: number;
@@ -50,6 +57,13 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
     });
   });
 
+  // Registered before secureHeaders so it runs after it and can tighten the CSP for SVG art.
+  app.use("/cards/*", async (c, next) => {
+    await next();
+    if (c.res.headers.get("content-type") === "image/svg+xml") {
+      c.header("Content-Security-Policy", SVG_CSP);
+    }
+  });
   app.use(
     secureHeaders({
       contentSecurityPolicy: {
@@ -68,7 +82,24 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
     c.header("Permissions-Policy", "camera=(self), geolocation=()");
   });
 
-  app.get("/healthz", (c) => c.json({ status: "ok" }));
+  // Reports DB reachability only (NFR-007).
+  // Reports DB reachability only (NFR-007).
+  app.get("/healthz", (c) => {
+    try {
+      deps.db.prepare("SELECT 1").get();
+      return c.json({ status: "ok" });
+    } catch (error) {
+      logger.warn({
+        requestId: c.get("requestId"),
+        event: "healthz_db_error",
+        error: error instanceof Error ? error.name : "unknown",
+      });
+      return errorJson(c, 503, "db_unavailable", "Database unavailable.");
+    }
+  });
+
+  app.route("/api/expansion", expansionRoutes(deps.expansion));
+  app.route("/cards", cardRoutes(deps.db, logger));
 
   app.route(
     "/api/captures",

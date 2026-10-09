@@ -214,7 +214,7 @@ naming any missing or invalid key without printing values (AC-012.2), or if
   `docker compose up` with Caddy's internal CA or a tunnel.
 - **Prod**: one Droplet (Ubuntu LTS, unattended-upgrades on), tagged per ADR 0002. The human
   runs `git pull && docker compose up -d --build`, then
-  `docker compose run --rm api npm run seed -- expansions/everyday-nature` (agents never
+  `docker compose run --rm api npm run seed:prod -- expansions/everyday-nature` (agents never
   deploy). No redeploys during the field test. Caddy obtains a certificate for
   `PUBLIC_HOSTNAME` = `<reserved-ip with dashes>.sslip.io`. Before relying on it, check
   whether sslip.io is on the Public Suffix List (shared Let's Encrypt rate limits otherwise);

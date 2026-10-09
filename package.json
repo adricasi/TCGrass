@@ -8,7 +8,7 @@
     "node": ">=22.12"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json && vite build web",
+    "build": "tsc -p tsconfig.build.json && cp -r src/server/db/migrations dist/server/db/ && vite build web",
     "typecheck": "tsc --noEmit && tsc --noEmit -p web",
     "lint": "eslint .",
     "format": "prettier --write .",
@@ -18,11 +18,14 @@
     "spike": "node --env-file-if-exists=.env --import tsx scripts/spike-identify.ts",
     "dev:api": "node --env-file-if-exists=.env --import tsx --watch src/server/main.ts",
     "dev:web": "vite web",
-    "start": "node dist/server/main.js"
+    "start": "node dist/server/main.js",
+    "seed": "node --env-file-if-exists=.env --import tsx src/server/seed-cli.ts",
+    "seed:prod": "node dist/server/seed-cli.js"
   },
   "devDependencies": {
     "@eslint/js": "^9.0.0",
     "@preact/preset-vite": "^2.10.6",
+    "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^22.0.0",
     "@vitest/coverage-v8": "^5.0.3",
     "eslint": "^9.0.0",
@@ -35,6 +38,7 @@
   },
   "dependencies": {
     "@hono/node-server": "^2.1.4",
+    "better-sqlite3": "^13.0.3",
     "hono": "^4.13.13",
     "pino": "^10.4.0",
     "preact": "^11.0.1",

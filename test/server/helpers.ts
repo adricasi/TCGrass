@@ -1,6 +1,15 @@
 import { Writable } from "node:stream";
 
-import { createApp } from "../../src/server/app.js";
+import { fileURLToPath } from "node:url";
+
+import type { Hono } from "hono";
+
+import { type AppEnv, createApp } from "../../src/server/app.js";
+import { type Db, openDatabase } from "../../src/server/db/connection.js";
+import { migrate } from "../../src/server/db/migrate.js";
+import { loadExpansionFolder } from "../../src/server/expansion/load.js";
+import { findExpansion, type StoredExpansion } from "../../src/server/expansion/repository.js";
+import { seedExpansion } from "../../src/server/expansion/seed.js";
 import type { Identification, Identifier, Photo } from "../../src/server/identify/client.js";
 import { createLogger } from "../../src/server/logger.js";
 
@@ -29,14 +38,49 @@ export function fakeIdentifier(answer: Identification | (() => Promise<Identific
   return { identify, photos };
 }
 
-export function testApp(identify: Identifier, maxInFlight?: number) {
+/** Absolute path inside the repo, independent of the working directory. */
+export function repoPath(relative: string): string {
+  return fileURLToPath(new URL(`../../${relative}`, import.meta.url));
+}
+
+export function fixtureDir(id: string): string {
+  return fileURLToPath(new URL(`../fixtures/expansions/${id}`, import.meta.url));
+}
+
+/** A migrated in-memory DB. */
+export function emptyDb(): Db {
+  const db = openDatabase(":memory:");
+  migrate(db);
+  return db;
+}
+
+/** A migrated in-memory DB with the given fixture expansion seeded. */
+export function seededDb(fixture = "fixture-a"): { db: Db; expansion: StoredExpansion } {
+  const db = emptyDb();
+  seedExpansion(db, loadExpansionFolder(fixtureDir(fixture), { placeholders: false }));
+  const expansion = findExpansion(db, fixture);
+  if (expansion === undefined) {
+    throw new Error(`fixture ${fixture} did not seed`);
+  }
+  return { db, expansion };
+}
+
+export interface TestAppOptions {
+  maxInFlight?: number;
+  maxUploads?: number;
+}
+
+export interface TestApp {
+  app: Hono<AppEnv>;
+  log: ReturnType<typeof memoryLog>;
+  db: Db;
+}
+
+export function testApp(identify: Identifier, options: TestAppOptions = {}): TestApp {
   const log = memoryLog();
-  const app = createApp({
-    identify,
-    logger: log.logger,
-    ...(maxInFlight === undefined ? {} : { maxInFlight }),
-  });
-  return { app, log };
+  const { db, expansion } = seededDb();
+  const app = createApp({ db, expansion, identify, logger: log.logger, ...options });
+  return { app, log, db };
 }
 
 export function photoForm(bytes: Uint8Array, type = "image/jpeg"): FormData {

@@ -80,7 +80,7 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
     a photo of an oak returns `oak`; `curl -I http://…` returns 301/308 to https.
 
 ## Milestone 2: Collect (T-003 Fri evening; rest Sat 10-10 morning)
-- [ ] T-003: Database + expansion seed command
+- [x] T-003: Database + expansion seed command
   - Estimate: 1 h
   - Requirements: REQ-001, AC-012.3
   - Depends on: T-002a
@@ -91,6 +91,9 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
     for the active expansion; 👤 run the seed in prod after deploy.
   - Done when: tests for AC-001.1–001.7 and AC-012.3 pass; seeding `everyday-nature` with
     `--placeholders` succeeds; `GET /api/expansion` returns 15 cards with odds.
+  - Result (2026-10-09): done. 155 tests; `npm run seed -- expansions/everyday-nature --placeholders`
+    loads 15 cards; `GET /api/expansion` returns 15 cards with odds. Production seed command is
+    `npm run seed:prod` (compiled; the runtime image has no tsx). 👤 prod seed waits for T-002b.
 
 - [ ] T-004: Anonymous players + auth
   - Estimate: 0.75 h

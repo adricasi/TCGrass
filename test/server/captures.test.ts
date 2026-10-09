@@ -4,13 +4,12 @@ import type { Identification } from "../../src/server/identify/client.js";
 import { MAX_PHOTO_BYTES } from "../../src/server/photo.js";
 import { captureResponseSchema } from "../../src/shared/schemas/captures.js";
 import { errorResponseSchema } from "../../src/shared/schemas/errors.js";
-import { createApp } from "../../src/server/app.js";
-import { fakeIdentifier, JPEG_BYTES, memoryLog, photoForm, testApp } from "./helpers.js";
+import { fakeIdentifier, JPEG_BYTES, photoForm, testApp } from "./helpers.js";
 
 const oak: Identification = { outcome: "card", cardId: "oak", confidence: 0.9, flavorLine: "x" };
 
 async function postPhoto(
-  app: ReturnType<typeof createApp>,
+  app: ReturnType<typeof testApp>["app"],
   body: FormData | string,
 ): Promise<Response> {
   return app.request("/api/captures", { method: "POST", body });
@@ -162,8 +161,7 @@ describe("POST /api/captures", () => {
           });
         }),
     );
-    const log = memoryLog();
-    const app = createApp({ identify: model.identify, logger: log.logger, maxUploads: 2 });
+    const { app } = testApp(model.identify, { maxUploads: 2 });
 
     const first = [postPhoto(app, photoForm(JPEG_BYTES)), postPhoto(app, photoForm(JPEG_BYTES))];
     await expect.poll(() => model.photos.length).toBe(2);
@@ -179,7 +177,7 @@ describe("POST /api/captures", () => {
 
   it("AC-003.12 frees the slot when identification throws", async () => {
     const model = fakeIdentifier(() => Promise.reject(new Error("boom")));
-    const { app } = testApp(model.identify, 1);
+    const { app } = testApp(model.identify, { maxInFlight: 1 });
     expect((await postPhoto(app, photoForm(JPEG_BYTES))).status).toBe(500);
     expect((await postPhoto(app, photoForm(JPEG_BYTES))).status).toBe(500);
     expect(model.photos).toHaveLength(2);

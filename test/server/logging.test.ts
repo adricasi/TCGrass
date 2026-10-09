@@ -8,7 +8,7 @@ import { describe, expect, it } from "vitest";
 import { createApp } from "../../src/server/app.js";
 import type { Identification } from "../../src/server/identify/client.js";
 import { createLogger } from "../../src/server/logger.js";
-import { fakeIdentifier, memoryLog, photoForm } from "./helpers.js";
+import { fakeIdentifier, memoryLog, photoForm, seededDb } from "./helpers.js";
 
 // A recognisable photo payload: if any of it reaches the logs, the test finds it.
 const PHOTO = new Uint8Array([
@@ -25,6 +25,7 @@ describe("logging", () => {
   it("NFR-007 logs request id, method, path, status and latency for each request", async () => {
     const log = memoryLog();
     const app = createApp({
+      ...seededDb(),
       identify: fakeIdentifier({ outcome: "screen" }).identify,
       logger: log.logger,
     });
@@ -48,7 +49,11 @@ describe("logging", () => {
       confidence: 0.9,
       flavorLine: null,
     };
-    const app = createApp({ identify: fakeIdentifier(card).identify, logger: log.logger });
+    const app = createApp({
+      ...seededDb(),
+      identify: fakeIdentifier(card).identify,
+      logger: log.logger,
+    });
     await app.request("/api/captures", { method: "POST", body: photoForm(PHOTO) });
 
     const capture = log.lines
@@ -65,7 +70,11 @@ describe("logging", () => {
       { outcome: "retry", reason: "timeout" },
     ];
     for (const outcome of outcomes) {
-      const app = createApp({ identify: fakeIdentifier(outcome).identify, logger: log.logger });
+      const app = createApp({
+        ...seededDb(),
+        identify: fakeIdentifier(outcome).identify,
+        logger: log.logger,
+      });
       await app.request("/api/captures?secret=" + SECRET, {
         method: "POST",
         headers: { authorization: `Bearer ${SECRET}` },
@@ -73,6 +82,7 @@ describe("logging", () => {
       });
     }
     const failing = createApp({
+      ...seededDb(),
       identify: fakeIdentifier(() => Promise.reject(new Error(`boom ${SECRET}`))).identify,
       logger: log.logger,
     });

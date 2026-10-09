@@ -85,7 +85,11 @@ describe("loadConfig", () => {
 });
 
 describe("loadServerConfig", () => {
-  const serverEnv = { ...validEnv, ACTIVE_EXPANSION: "everyday-nature" };
+  const serverEnv = {
+    ...validEnv,
+    ACTIVE_EXPANSION: "everyday-nature",
+    DATABASE_PATH: ".dev/test.db",
+  };
 
   it("AC-012.1 reads the server settings with defaults", () => {
     const config = loadServerConfig(serverEnv);
@@ -94,6 +98,7 @@ describe("loadServerConfig", () => {
       port: 3000,
       logLevel: "info",
       logFilePath: undefined,
+      databasePath: ".dev/test.db",
     });
     expect(config.inference.model).toBe("gemma-3-12b-it");
   });
@@ -117,6 +122,7 @@ describe("loadServerConfig", () => {
     ["ACTIVE_EXPANSION", { ACTIVE_EXPANSION: "../etc" }],
     ["PORT", { PORT: "99999" }],
     ["LOG_LEVEL", { LOG_LEVEL: "verbose" }],
+    ["DATABASE_PATH", { DATABASE_PATH: "" }],
   ])("AC-012.2 refuses to start and names %s when it is missing or malformed", (key, override) => {
     expect(() => loadServerConfig({ ...serverEnv, ...override })).toThrow(key);
   });
@@ -124,6 +130,8 @@ describe("loadServerConfig", () => {
   it("AC-012.2 names server and inference keys together without printing secrets", () => {
     expect(() =>
       loadServerConfig({ INFERENCE_API_KEY: "sk-very-secret-value", INFERENCE_MODEL: "m" }),
-    ).toThrow(/^Missing or invalid configuration: INFERENCE_BASE_URL, ACTIVE_EXPANSION$/);
+    ).toThrow(
+      /^Missing or invalid configuration: INFERENCE_BASE_URL, ACTIVE_EXPANSION, DATABASE_PATH$/,
+    );
   });
 });
