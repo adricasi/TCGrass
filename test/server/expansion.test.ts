@@ -23,7 +23,7 @@ cards:
 `;
 
 describe("parseExpansionYaml", () => {
-  it("parses the everyday-nature expansion with 15 cards", () => {
+  it("AC-001.1 parses the everyday-nature expansion with 15 cards", () => {
     const expansion = parseExpansionYaml(everydayNature);
     expect(expansion.id).toBe("everyday-nature");
     expect(expansion.cards).toHaveLength(15);
@@ -61,7 +61,7 @@ describe("parseExpansionYaml", () => {
     expect(() => parseExpansionYaml(text)).toThrow(/cards\.1\.identify_hint/);
   });
 
-  it("rejects text that is not YAML", () => {
+  it("AC-001.3 rejects text that is not YAML", () => {
     expect(() => parseExpansionYaml("cards: [unclosed")).toThrow(ExpansionError);
   });
 });

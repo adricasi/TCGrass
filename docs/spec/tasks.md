@@ -52,7 +52,7 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
     deferred; only the model and local path are recorded. 18 photos, not 20 (2 non-catalogue
     photos missing).
 
-- [ ] T-002a: Local skeleton: camera photo → API → Gemma → result on screen
+- [~] T-002a: Local skeleton: camera photo → API → Gemma → result on screen
   - Estimate: 1 h
   - Requirements: REQ-003 (AC-003.1–003.3, 003.9, 003.10, 003.12), REQ-012, NFR-001, NFR-007
   - Depends on: T-001

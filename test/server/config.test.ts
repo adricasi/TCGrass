@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { ConfigError, loadConfig } from "../../src/server/config.js";
+import { ConfigError, loadConfig, loadServerConfig } from "../../src/server/config.js";
 
 const validEnv = {
   INFERENCE_BASE_URL: "https://inference.example.test/v1/",
@@ -81,5 +81,49 @@ describe("loadConfig", () => {
     expect(message).toContain("INFERENCE_MODEL");
     expect(message).not.toContain("sk-very-secret-value");
     expect(message).not.toContain("user:pw");
+  });
+});
+
+describe("loadServerConfig", () => {
+  const serverEnv = { ...validEnv, ACTIVE_EXPANSION: "everyday-nature" };
+
+  it("AC-012.1 reads the server settings with defaults", () => {
+    const config = loadServerConfig(serverEnv);
+    expect(config).toMatchObject({
+      activeExpansion: "everyday-nature",
+      port: 3000,
+      logLevel: "info",
+      logFilePath: undefined,
+    });
+    expect(config.inference.model).toBe("gemma-3-12b-it");
+  });
+
+  it("AC-012.1 reads explicit port, log level and log file", () => {
+    const config = loadServerConfig({
+      ...serverEnv,
+      PORT: "8080",
+      LOG_LEVEL: "debug",
+      LOG_FILE_PATH: "/data/logs/api.log",
+    });
+    expect(config).toMatchObject({
+      port: 8080,
+      logLevel: "debug",
+      logFilePath: "/data/logs/api.log",
+    });
+  });
+
+  it.each([
+    ["ACTIVE_EXPANSION", { ACTIVE_EXPANSION: undefined }],
+    ["ACTIVE_EXPANSION", { ACTIVE_EXPANSION: "../etc" }],
+    ["PORT", { PORT: "99999" }],
+    ["LOG_LEVEL", { LOG_LEVEL: "verbose" }],
+  ])("AC-012.2 refuses to start and names %s when it is missing or malformed", (key, override) => {
+    expect(() => loadServerConfig({ ...serverEnv, ...override })).toThrow(key);
+  });
+
+  it("AC-012.2 names server and inference keys together without printing secrets", () => {
+    expect(() =>
+      loadServerConfig({ INFERENCE_API_KEY: "sk-very-secret-value", INFERENCE_MODEL: "m" }),
+    ).toThrow(/^Missing or invalid configuration: INFERENCE_BASE_URL, ACTIVE_EXPANSION$/);
   });
 });
