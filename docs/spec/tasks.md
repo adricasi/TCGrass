@@ -29,7 +29,7 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
   tests → T-011 backups and load script → T-013 install (keep the AC-013.2 hint).
 
 ## Milestone 1: Walking skeleton (Fri 10-09 afternoon)
-- [~] T-001: Inference client + identification spike
+- [x] T-001: Inference client + identification spike
   - Estimate: 1 h
   - Requirements: REQ-003 (AC-003.4, 003.8, 003.9), REQ-012
   - Depends on: —
@@ -47,8 +47,12 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
     endpoint; the spike report shows ≥ 80 % correct outcomes and 100 % parseable (cards that
     fail are swapped in the YAML); screen rejection rate recorded (a miss becomes a stated
     limitation); Q-7 resolved and the chosen path + model id recorded in design.md.
+  - Result (2026-10-09): done. Spike 18/18 with Ollama + `gemma4:e4b` (design.md § Options
+    considered). Deviation approved by the author: the production path part of Q-7 is
+    deferred; only the model and local path are recorded. 18 photos, not 20 (2 non-catalogue
+    photos missing).
 
-- [ ] T-002a: Local skeleton: camera photo → API → Gemma → result on screen
+- [x] T-002a: Local skeleton: camera photo → API → Gemma → result on screen
   - Estimate: 1 h
   - Requirements: REQ-003 (AC-003.1–003.3, 003.9, 003.10, 003.12), REQ-012, NFR-001, NFR-007
   - Depends on: T-001
@@ -59,6 +63,8 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
     downscale ≤ 1024 px, result text; tsconfig/ESLint split for Node and DOM.
   - Done when: tests for AC-003.3 (downscale size), AC-003.10, AC-003.12 and the
     log-redaction rule pass; on the laptop (localhost) a photo of an oak returns `oak`.
+  - Result (2026-10-09): done. Laptop test by the author: webcam photo of a dog returned `dog`
+    via Ollama + `gemma4:e4b` (dog instead of oak; same code path, oak verified in the T-001 spike).
 
 - [ ] T-002b: Deploy skeleton to the Droplet over HTTPS
   - Estimate: 1 h

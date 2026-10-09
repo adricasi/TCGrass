@@ -131,7 +131,7 @@ reconfirmed 2026-10-07).
 - [x] Q-4 (brief Q-6): Can a card in a `pending` offer be offered in another trade? → **No**; a card is locked while it is in a pending offer (2026-10-07).
 - [x] Q-5 (brief Q-7): Daily trading pack shared or per player? → **Per player**, fixed for the UTC day (2026-10-07).
 - [ ] Q-6 (brief Q-8): Which tool/model generates the art (terms allow publication; ideally open)?
-- [ ] Q-7: Which inference path is used: DO serverless Gemma, vLLM on a GPU Droplet, or Ollama on a laptop? Decided by the hour-1 spike.
+- [~] Q-7: Which inference path is used: DO serverless Gemma, vLLM on a GPU Droplet, or Ollama on a laptop? Decided by the hour-1 spike. → Model decided: `gemma4:e4b` (18/18 on the spike, 2026-10-09). Path still open: laptop Ollama misses NFR-004 (p95 14.8 s vs ≤ 8 s); decision deferred by the author (2026-10-09).
 - [~] Q-9: DO serverless is **allowed** if the spike picks it (decided 2026-10-07); still open: cite DigitalOcean's data-use and retention terms for prompts/images in the post and design.md.
 - [x] Q-8: Which hostname is used for HTTPS? → free `<droplet-ip>.sslip.io` name (2026-10-07).
 

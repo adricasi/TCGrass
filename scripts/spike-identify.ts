@@ -2,21 +2,24 @@
  * Identification spike (T-001): runs a folder of labelled photos through the configured
  * inference endpoint and prints accuracy, parse rate, screen rejection and latency.
  *
- * Usage: npm run spike -- <photos-dir> [expansion-dir]
+ * Usage: npm run spike -- <photos-dir> [expansion-dir] [--timeout-ms <ms>]
  *   <photos-dir>/<card id>/*.jpg   photos of catalogue subjects (expected outcome: that card)
  *   <photos-dir>/none/*.jpg        non-catalogue subjects (expected: none)
  *   <photos-dir>/screen/*.jpg      screens, prints, drawings (expected: screen)
  * Photos must be JPEG, PNG or WebP; downscale them to <= 1024 px on the long edge first, as
  * the app does (e.g. `mogrify -resize '1024x1024>' *.jpg`). Reads the INFERENCE_* settings
- * from the environment (or `.env`). Not run in CI: it calls the real endpoint.
+ * from the environment (or `.env`). `--timeout-ms` overrides the app's 30-s limit to measure a
+ * slow model's accuracy separately from its speed. Not run in CI: it calls the real endpoint.
  */
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { extname, join } from "node:path";
+import { parseArgs } from "node:util";
 
 import { loadConfig } from "../src/server/config.js";
 import { parseExpansionYaml } from "../src/server/expansion/parse.js";
 import {
   createIdentifier,
+  IDENTIFY_TIMEOUT_MS,
   type Identification,
   type PhotoMimeType,
 } from "../src/server/identify/client.js";
@@ -70,18 +73,26 @@ function percent(count: number, total: number): string {
 }
 
 async function main(): Promise<void> {
-  const [photosDir, expansionDir = "expansions/everyday-nature"] = process.argv.slice(2);
-  if (photosDir === undefined) {
-    console.error("Usage: npm run spike -- <photos-dir> [expansion-dir]");
+  const { positionals, values } = parseArgs({
+    allowPositionals: true,
+    options: { "timeout-ms": { type: "string" } },
+  });
+  const [photosDir, expansionDir = "expansions/everyday-nature"] = positionals;
+  const timeoutMs =
+    values["timeout-ms"] === undefined ? IDENTIFY_TIMEOUT_MS : Number(values["timeout-ms"]);
+  if (photosDir === undefined || !Number.isInteger(timeoutMs) || timeoutMs <= 0) {
+    console.error("Usage: npm run spike -- <photos-dir> [expansion-dir] [--timeout-ms <ms>]");
     process.exit(2);
   }
 
   const config = loadConfig(process.env);
   const expansion = parseExpansionYaml(readFileSync(join(expansionDir, "expansion.yaml"), "utf8"));
   const catalogueIds = new Set(expansion.cards.map((card) => card.id));
-  const identify = createIdentifier({ config, expansion });
+  const identify = createIdentifier({ config, expansion, timeoutMs });
 
-  console.log(`Endpoint: ${config.inference.baseUrl} · model: ${config.inference.model}`);
+  console.log(
+    `Endpoint: ${config.inference.baseUrl} · model: ${config.inference.model} · timeout: ${timeoutMs} ms`,
+  );
   console.log(`Expansion: ${expansion.id} (${catalogueIds.size} cards)\n`);
 
   const results: Result[] = [];

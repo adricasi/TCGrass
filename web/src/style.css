@@ -1,0 +1,40 @@
+:root {
+  color-scheme: light dark;
+  font-family: system-ui, sans-serif;
+}
+
+body {
+  margin: 0;
+  padding: 16px;
+}
+
+main {
+  max-width: 430px;
+  margin: 0 auto;
+}
+
+.capture {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.preview {
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  border-radius: 12px;
+  background: #222;
+}
+
+.shutter {
+  font-size: 1.25rem;
+  padding: 14px;
+  border-radius: 999px;
+}
+
+.result {
+  min-height: 1.5em;
+  font-size: 1.1rem;
+  text-align: center;
+}
