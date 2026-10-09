@@ -5,7 +5,15 @@ import { loadExpansionFolder } from "../../src/server/expansion/load.js";
 import { findExpansion } from "../../src/server/expansion/repository.js";
 import { seedExpansion } from "../../src/server/expansion/seed.js";
 import { expansionResponseSchema } from "../../src/shared/schemas/expansion.js";
-import { emptyDb, fakeIdentifier, memoryLog, repoPath, seededDb, testApp } from "./helpers.js";
+import {
+  copyFixture,
+  emptyDb,
+  fakeIdentifier,
+  memoryLog,
+  repoPath,
+  seededDb,
+  testApp,
+} from "./helpers.js";
 
 const identify = fakeIdentifier({ outcome: "screen" }).identify;
 
@@ -29,11 +37,11 @@ describe("GET /api/expansion", () => {
     });
   });
 
-  it("AC-001.1 returns the 15 everyday-nature cards with odds after a placeholder seed", async () => {
+  it("AC-001.1 returns the 15 everyday-nature cards with odds", async () => {
     const db = emptyDb();
     seedExpansion(
       db,
-      loadExpansionFolder(repoPath("expansions/everyday-nature"), { placeholders: true }),
+      loadExpansionFolder(repoPath("expansions/everyday-nature"), { placeholders: false }),
     );
     const expansion = findExpansion(db, "everyday-nature");
     if (expansion === undefined) {
@@ -61,15 +69,15 @@ describe("GET /cards/:expansionId/:cardId", () => {
     const db = emptyDb();
     seedExpansion(
       db,
-      loadExpansionFolder(repoPath("expansions/everyday-nature"), { placeholders: true }),
+      loadExpansionFolder(copyFixture("fixture-a", ["oak"]), { placeholders: true }),
     );
-    const expansion = findExpansion(db, "everyday-nature");
+    const expansion = findExpansion(db, "fixture-a");
     if (expansion === undefined) {
       throw new Error("not seeded");
     }
     const app = createApp({ db, expansion, identify, logger: memoryLog().logger });
 
-    const response = await app.request("/cards/everyday-nature/oak");
+    const response = await app.request("/cards/fixture-a/oak");
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toBe("image/svg+xml");
     expect(await response.text()).toMatch(/^<svg [\s\S]*>tree<\/text><\/svg>$/);

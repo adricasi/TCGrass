@@ -1,26 +1,14 @@
-import { cpSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
+import { readdirSync, readFileSync, rmSync, statSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { afterEach, describe, expect, it } from "vitest";
+import { describe, expect, it } from "vitest";
 
 import type { Db } from "../../src/server/db/connection.js";
 import { loadExpansionFolder } from "../../src/server/expansion/load.js";
 import { ExpansionError } from "../../src/server/expansion/parse.js";
 import { findExpansion } from "../../src/server/expansion/repository.js";
 import { seedExpansion } from "../../src/server/expansion/seed.js";
-import { emptyDb, fixtureDir, repoPath } from "./helpers.js";
-
-const temporaryDirs: string[] = [];
-
-/** Copy of a fixture under a fresh temp dir, so a test can edit or delete files. */
-function copyFixture(id: string): string {
-  const root = mkdtempSync(join(tmpdir(), "tcgrass-seed-"));
-  temporaryDirs.push(root);
-  const target = join(root, id);
-  cpSync(fixtureDir(id), target, { recursive: true });
-  return target;
-}
+import { copyFixture, emptyDb, fixtureDir, repoPath } from "./helpers.js";
 
 function editYaml(dir: string, edit: (text: string) => string): void {
   const file = join(dir, "expansion.yaml");
@@ -52,12 +40,6 @@ function addOwnedInstance(db: Db, expansionId: string, cardId: string, ownerId =
   );
 }
 
-afterEach(() => {
-  for (const dir of temporaryDirs.splice(0)) {
-    rmSync(dir, { recursive: true, force: true });
-  }
-});
-
 describe("seeding an expansion", () => {
   it("AC-001.1 stores the expansion, cards, odds, style prompt and instructions and reports the count", () => {
     const db = emptyDb();
@@ -75,10 +57,13 @@ describe("seeding an expansion", () => {
     expect(stored?.cards.every((card) => !card.isPlaceholder)).toBe(true);
   });
 
-  it("AC-001.1 seeds the real everyday-nature expansion with placeholders (15 cards)", () => {
-    const db = emptyDb();
-    const result = seed(db, repoPath("expansions/everyday-nature"), true);
-    expect(result.cardsLoaded).toBe(15);
+  it("NFR-004 keeps every everyday-nature card at or under 350 KB for phones", () => {
+    const dir = repoPath("expansions/everyday-nature/images");
+    const sizes = readdirSync(dir)
+      .filter((name) => name.endsWith(".png"))
+      .map((name) => ({ name, bytes: statSync(join(dir, name)).size }));
+    expect(sizes).toHaveLength(15);
+    expect(sizes.filter((file) => file.bytes > 350 * 1024)).toEqual([]);
   });
 
   it("AC-001.2 rejects bad odds, names the problem and stores nothing", () => {

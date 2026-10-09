@@ -182,7 +182,7 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
   - Done when: backup test passes; load script shows no 5xx at 5 parallel captures (a 6th is
     rejected per AC-003.12); checklist passes on Chrome Android and Safari iOS.
 
-- [ ] T-012: 👤 Card art for Everyday Nature
+- [x] T-012: 👤 Card art for Everyday Nature
   - Estimate: ~1 h of the human's time, outside build hours
   - Requirements: REQ-001 (AC-001.4), NFR-008
   - Depends on: T-003 (can run in parallel with M2–M3, outside build hours)
@@ -191,6 +191,8 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
     `expansions/everyday-nature/images/<id>.png`; fill `license.images`.
   - Done when: seed runs **without** `--placeholders`; `license.images` names tool, model
     and terms.
+  - Result (2026-10-09): done. 15 cards at 768×1145 (2:3, spec changed from 3:4), 4.3 MB total;
+    seed runs without placeholders; `license.images` = Gemini app (Google), Google ToS cited.
 
 - [ ] T-013: Installable PWA
   - Estimate: 0.25 h
