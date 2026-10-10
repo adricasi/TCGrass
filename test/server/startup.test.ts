@@ -28,6 +28,7 @@ function config(overrides: Partial<ServerConfig> = {}): ServerConfig {
     databasePath: join(dir, "data", "tcgrass.db"),
     trustProxy: false,
     dailyCaps: { global: 3000, perPlayer: 30 },
+    captureCooldownHours: 5,
     ...overrides,
   };
 }
@@ -77,13 +78,14 @@ describe("migrate", () => {
 
   it("ADR-0004 applies the migrations once and is a no-op on the next start", () => {
     const db = openDatabase(":memory:");
-    expect(migrate(db)).toBe(2);
-    expect(migrate(db)).toBe(2);
+    expect(migrate(db)).toBe(3);
+    expect(migrate(db)).toBe(3);
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
       .all()
       .map((row) => (row as { name: string }).name);
     expect(tables).toEqual([
+      "capture_cooldowns",
       "card_instances",
       "catalogue_cards",
       "daily_call_counts",

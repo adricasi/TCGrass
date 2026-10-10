@@ -46,6 +46,7 @@ export function bootstrap(config: ServerConfig, logger: Logger): Started {
         logger,
         trustProxy: config.trustProxy,
         dailyCaps: config.dailyCaps,
+        captureCooldownHours: config.captureCooldownHours,
         ...(existsSync(BUILT_WEB_ROOT) ? { webRoot: BUILT_WEB_ROOT } : {}),
       }),
       db,

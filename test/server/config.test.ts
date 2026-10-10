@@ -115,6 +115,27 @@ describe("loadServerConfig", () => {
     ).toEqual({ global: 500, perPlayer: 12 });
   });
 
+  it.each([
+    [undefined, 5],
+    ["", 5],
+    ["0", 0],
+    ["0.5", 0.5],
+    ["168", 168],
+  ])("AC-014.4 reads CAPTURE_COOLDOWN_HOURS %j as %j hours", (value, hours) => {
+    expect(
+      loadServerConfig({ ...serverEnv, CAPTURE_COOLDOWN_HOURS: value }).captureCooldownHours,
+    ).toBe(hours);
+  });
+
+  it.each(["-1", "168.5", "abc", "Infinity"])(
+    "AC-014.4 refuses to start with CAPTURE_COOLDOWN_HOURS=%j and names the setting",
+    (value) => {
+      expect(() => loadServerConfig({ ...serverEnv, CAPTURE_COOLDOWN_HOURS: value })).toThrow(
+        new ConfigError("Missing or invalid configuration: CAPTURE_COOLDOWN_HOURS"),
+      );
+    },
+  );
+
   it("NFR-001 trusts X-Forwarded-For only when TRUST_PROXY is exactly true", () => {
     expect(loadServerConfig({ ...serverEnv, TRUST_PROXY: "true" }).trustProxy).toBe(true);
     expect(loadServerConfig({ ...serverEnv, TRUST_PROXY: "" }).trustProxy).toBe(false);

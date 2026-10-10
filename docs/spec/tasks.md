@@ -201,7 +201,7 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
 Changed 2026-10-10 (author decision): the daily trading pack (T-010) moved to *After the
 challenge*; this milestone replaces it.
 
-- [ ] T-019: Capture cooldown per card
+- [x] T-019: Capture cooldown per card
   - Estimate: 1 h
   - Requirements: REQ-014 (AC-014.1–014.6), NFR-007, NFR-009
   - Depends on: T-005, T-016
@@ -215,6 +215,14 @@ challenge*; this milestone replaces it.
   - Done when: tests for AC-014.1–014.6 pass (fake clock; a trade doesn't start a cooldown;
     a `cooldown` capture counts toward both daily caps; two parallel captures of one card mint
     one); the NFR-009 invariant test still passes; `game-invariants-reviewer` has no Blockers.
+  - Result (2026-10-10): done. Migration `003-capture-cooldowns.sql`; `mintCapture()` checks the
+    cooldown, rolls rarity, mints and records the capture time in one IMMEDIATE transaction;
+    `cooldown` outcome in `src/shared/schemas/captures.ts`; PWA message "Already found: <name>.
+    Next one from <local time>" (adds the weekday when not today); `.env.example` and
+    `docs/deploy.md` updated. 438 tests (11 new server, 9 config, 2 web). Reviews: code-reviewer
+    and game-invariants-reviewer, no Blockers; Should-fix applied (whole-millisecond cooldown for
+    decimal hours, refused capture doesn't extend it). Tests run with the cooldown off unless a
+    test sets it (`testApp` default 0).
 
 - [ ] T-020: Reveal animation and visual polish (timeboxed: 1.5 h)
   - Estimate: 1.5 h, hard stop

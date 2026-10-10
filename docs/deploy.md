@@ -100,7 +100,8 @@ Set these variables, with the names taken from `.env.example`:
 - **Inference:** `INFERENCE_BASE_URL`, `INFERENCE_MODEL` and `INFERENCE_API_KEY` (secret),
   for DO serverless `gemma-4-31B-it`.
 - **Game settings:** `ACTIVE_EXPANSION`, `APP_ENV=production`, `LOG_LEVEL=info`,
-  `IDENTIFY_MIN_CONFIDENCE`, `INFERENCE_DAILY_CALL_LIMIT` and `CAPTURES_PER_PLAYER_PER_DAY`.
+  `IDENTIFY_MIN_CONFIDENCE`, `INFERENCE_DAILY_CALL_LIMIT`, `CAPTURES_PER_PLAYER_PER_DAY` and
+  `CAPTURE_COOLDOWN_HOURS`.
 
 Compose always sets `PORT`, `DATABASE_PATH`, `LOG_FILE_PATH` and `TRUST_PROXY` itself.
 
@@ -142,6 +143,10 @@ No redeploys from Sat 2026-10-10 18:00 CEST until the field test ends (NFR-003).
   `${DATA_DIR}/logs/api.log`, which survives redeploys.
 - **Kill switch:** set `INFERENCE_DAILY_CALL_LIMIT=0` in `.env`, then run
   `docker compose up -d api`.
+- **Capture cooldown:** set `CAPTURE_COOLDOWN_HOURS` in `.env` (default 5, from 0 to 168,
+  decimals allowed, 0 = off), then run `docker compose up -d api`. The new value applies at once
+  to cooldowns already running. For the field test, decide before the Saturday 18:00 deploy;
+  a config-only restart like this one is allowed until Sun 09:30 CEST (product.md Q-12).
 - **Rollback:** `git checkout <previous-tag> && docker compose up -d --build`. Migrations are
   additive during the challenge week, so the DB stays compatible.
 - **Backups:** the daily SQLite backup arrives with T-011. Until then, take one by hand with

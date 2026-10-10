@@ -3,13 +3,18 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import type { CapturedCard, CaptureResponse } from "../../src/shared/schemas/captures.js";
 import { ApiError, postCapture } from "./api.js";
 import { captureFrame } from "./capture-frame.js";
-import { describeCaptureError, SLOW_CAPTURE_MS, SLOW_CAPTURE_TEXT } from "./capture-messages.js";
+import {
+  describeCaptureError,
+  describeCooldown,
+  SLOW_CAPTURE_MS,
+  SLOW_CAPTURE_TEXT,
+} from "./capture-messages.js";
 import { Reveal } from "./Reveal.js";
 
 type CameraState = "starting" | "ready" | "denied" | "busy-elsewhere" | "insecure" | "unavailable";
 
 /** Messages for captures that mint nothing (AC-003.6, AC-003.7, AC-003.9). */
-const RESULT_TEXT: Record<Exclude<CaptureResponse["outcome"], "card">, string> = {
+const RESULT_TEXT: Record<Exclude<CaptureResponse["outcome"], "card" | "cooldown">, string> = {
   none: "No card here — try something else",
   screen: "That looks like a screen or a picture. Photograph the real thing!",
   retry: "The card spirits didn't answer in time. Try again.",
@@ -117,6 +122,8 @@ export function Capture({
       const result = await postCapture(secret, await captureFrame(video));
       if (result.outcome === "card") {
         setRevealed(result.card);
+      } else if (result.outcome === "cooldown") {
+        setMessage(describeCooldown(result.cooldown));
       } else {
         setMessage(RESULT_TEXT[result.outcome]);
       }
