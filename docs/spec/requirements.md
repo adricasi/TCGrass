@@ -1,7 +1,7 @@
 # Requirements: TCGrass
 
 - Status: Approved (2026-10-08) <!-- Draft | In review | Approved -->
-- Last updated: 2026-10-10 (AC-003.13 and NFR-012–015 added for public production, ADR 0006)
+- Last updated: 2026-10-10 (NFR-004 revised after the DO serverless check; earlier: AC-003.13/14, NFR-012–015)
 - Input: [product.md](product.md)
 
 IDs are permanent: never renumber or reuse. Deprecate with ~~strikethrough~~ and a note.
@@ -326,7 +326,7 @@ Priority follows the build order in product.md: Must = priorities 1–3, Should 
 | NFR-001 | Security | All traffic over HTTPS (TLS 1.2+), HTTP redirected (301 or 308) to HTTPS. Player secrets sent only in a request header, never in URLs, never logged. Every API input validated against a schema at the boundary; model output validated against a schema and the catalogue ids. No secrets in the repo (gitleaks in pre-commit and CI). `npm audit --audit-level=high` reports 0. | Tests; CI; manual TLS check (`curl -I http://…` → 301/308 to https) |
 | NFR-002 | Privacy / data classification | 0 photos persisted (REQ-004). Stored personal data limited to display name; player secret is a credential (Confidential). No analytics, trackers or third-party scripts. | Tests for REQ-004; grep of DB/disk/logs after field test; review of served HTML |
 | NFR-003 | Availability (SLO) | (Challenge week; production: no SLO, best effort, monitored per T-017.) During the field test (Sun 2026-10-11, 10:00–12:30 CEST) ≥ 95 % of API requests succeed (HTTP < 500) and ≥ 90 % of captures end in `card`, `none` or `screen` (not `retry`). No redeploys during the test. Daily DB backup kept 7 days on the same volume (no off-box copy). No SLO after the deadline. | Request log file on the volume; backup test |
-| NFR-004 | Performance | Capture: server-side p95 ≤ 8 s (request received → response sent) [ASSUMPTION A-7]. Other API calls: p95 ≤ 500 ms server-side. Upload ≤ 1 MB after on-device downscale. | Per-request latency in the field-test log file; unit test for downscale size |
+| NFR-004 | Performance | Capture: server-side p50 ≤ 10 s and p95 ≤ 30 s (request received → response sent) with DO serverless Gemma 4 (revised 2026-10-10 from p95 ≤ 8 s, author decision after the DO check: measured p50 9.1 s, p95 26.4 s; the 30 s ceiling is the model timeout, AC-003.9). Other API calls: p95 ≤ 500 ms server-side. Upload ≤ 1 MB after on-device downscale. | Per-request latency in the field-test log file; unit test for downscale size |
 | NFR-005 | Scalability | Designed for ≤ 50 players, ≤ 5,000 card instances and ≤ 5 concurrent captures. No more. (Challenge week; production target in NFR-013.) | Load script with 5 parallel captures against a stub model |
 | NFR-006 | Cost | (Challenge week; production cost in NFR-015.) ≤ $25 total cloud spend for the challenge week. With no GPU resources, idle cost ≤ $12/month. A GPU Droplet is destroyed (not just powered off, which still bills) whenever testing stops and by 2026-10-12 at the latest. | DigitalOcean billing |
 | NFR-007 | Observability | Structured JSON logs per request: request id, route, status, latency; per capture: outcome (card id / none / screen / invalid / error) and model latency. Never photo bytes, player secrets or API keys. Health endpoint reporting DB reachability. Request logs also written to a file on the volume so they survive redeploys. | Log-redaction test; manual check of health endpoint |
