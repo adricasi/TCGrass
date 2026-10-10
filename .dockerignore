@@ -1,0 +1,25 @@
+# Allow-list would be stricter, but the build needs few paths; keep secrets and private data out.
+**/.env
+**/.env.*
+!.env.example
+data/
+.dev/
+spike-photos/
+node_modules/
+dist/
+coverage/
+.git/
+.github/
+.claude/
+.agents/
+.gemini/
+.reviews/
+.devcontainer/
+.idea/
+.vscode/
+docs/
+test/
+scripts/
+**/*.log
+**/*.pem
+**/*.key

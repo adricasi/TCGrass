@@ -1,0 +1,7 @@
+# Local only: lets INFERENCE_BASE_URL=http://host.docker.internal:11434/v1 reach an Ollama on
+# this machine. Not used in production, where inference is HTTPS to DO serverless.
+# docker compose -f compose.yaml -f compose.local.yaml up -d --build
+services:
+  api:
+    extra_hosts:
+      - host.docker.internal:host-gateway

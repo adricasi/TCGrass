@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 
+import { serveStatic } from "@hono/node-server/serve-static";
 import { Hono } from "hono";
 import { secureHeaders } from "hono/secure-headers";
 
@@ -63,6 +64,8 @@ export interface AppDeps {
   dailyCaps?: DailyCaps;
   /** Random source for rarity rolls (tests); `crypto.randomInt` otherwise. */
   random?: (max: number) => number;
+  /** Absolute path of the built PWA (`dist/web`); unset serves the API only. */
+  webRoot?: string;
 }
 
 /** Builds the API. Dependencies are injected so tests run it with a fake model. */
@@ -182,6 +185,26 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
       logger,
     }),
   );
+
+  if (deps.webRoot !== undefined) {
+    const serveWeb = serveStatic({ root: deps.webRoot });
+    app.get("*", async (c, next) => {
+      // The API and card art have their own routes; never fall through to files for them.
+      if (c.req.path.startsWith("/api/") || c.req.path.startsWith("/cards/")) {
+        return next();
+      }
+      const response = await serveWeb(c, next);
+      if (c.res.ok) {
+        // Vite fingerprints everything under /assets; the shell must revalidate so a redeploy
+        // never leaves it pointing at assets that no longer exist.
+        c.header(
+          "Cache-Control",
+          c.req.path.startsWith("/assets/") ? "public, max-age=31536000, immutable" : "no-cache",
+        );
+      }
+      return response;
+    });
+  }
 
   app.notFound((c) => errorJson(c, 404, "not_found", "Not found."));
   app.onError((error, c) => {

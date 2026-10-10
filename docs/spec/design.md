@@ -181,7 +181,7 @@ naming any missing or invalid key without printing values (AC-012.2), or if
 | DO serverless inference | DigitalOcean (third party) | Per DO's terms, to be cited (Q-9) | Allowed (decided 2026-10-07) with the terms cited in the post; G-3 worded as "provider with stated retention" |
 - Data protection: TLS via Caddy (Let's Encrypt, HSTS). Photos: the client re-encodes via a
   canvas (strips EXIF/GPS) before upload; the server keeps the upload in memory only (body
-  limit 5 MB in Caddy and Hono), checks magic bytes, never writes it to disk or logs, and drops
+  limit 5 MB in Hono, with a 6 MB outer bound in Caddy), checks magic bytes, never writes it to disk or logs, and drops
   the reference after the model call in a `finally` block (REQ-004). The DO Volume is
   encrypted at rest by DigitalOcean.
 - Headers (set by Hono only): `Content-Security-Policy: default-src 'self'; img-src 'self' blob: data:;
@@ -227,12 +227,14 @@ naming any missing or invalid key without printing values (AC-012.2), or if
   `gemma` on the laptop; SQLite file in `./.dev/` (git-ignored; `./data` is the Compose volume and is off-limits to agents). Camera testing on a phone over HTTPS via
   `docker compose up` with Caddy's internal CA or a tunnel.
 - **Prod**: one Droplet (Ubuntu LTS, unattended-upgrades on), tagged per ADR 0002. The human
-  runs `git pull && docker compose up -d --build`, then
-  `docker compose run --rm api npm run seed:prod -- expansions/everyday-nature` (agents never
-  deploy). No redeploys during the field test. Caddy obtains a certificate for
-  `PUBLIC_HOSTNAME` = `<reserved-ip with dashes>.sslip.io`. Before relying on it, check
-  whether sslip.io is on the Public Suffix List (shared Let's Encrypt rate limits otherwise);
-  fallback hostname: `<reserved-ip>.nip.io`.
+  checks out a tag, runs `docker compose build`, then
+  `docker compose run --rm api node dist/server/seed-cli.js expansions/everyday-nature` (npm
+  can't write its cache on the read-only root filesystem), then `docker compose up -d` (steps
+  in `docs/deploy.md`; agents never deploy). No redeploys during the field test. Caddy obtains
+  a certificate for `PUBLIC_HOSTNAME` = `<reserved-ip with dashes>.sslip.io`. Checked
+  2026-10-10: neither sslip.io nor nip.io is on the Public Suffix List, so both share Let's
+  Encrypt's per-domain limits; if issuance is rate-limited, use a hostname under a listed
+  domain (e.g. duckdns.org).
 - **CI** (GitHub Actions, existing): lint, typecheck, tests with coverage, build (server +
   PWA), `npm audit --audit-level=high`, gitleaks, Docker image build (no push).
 - Rollout / rollback: deploy from a git tag; rollback = check out the previous tag and

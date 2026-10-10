@@ -98,6 +98,7 @@ export type TestAppOptions = Partial<
     | "playerCreations"
     | "unknownFriendCodes"
     | "dailyCaps"
+    | "webRoot"
   >
 >;
 
