@@ -8,6 +8,7 @@ import type { Db } from "./db/connection.js";
 import { errorJson } from "./errors.js";
 import type { StoredExpansion } from "./expansion/repository.js";
 import { type DailyCaps, DEFAULT_DAILY_CAPS } from "./game/daily-caps.js";
+import { DEFAULT_CAPTURE_COOLDOWN_HOURS } from "./game/mint.js";
 import type { Identifier } from "./identify/client.js";
 import { InFlightLimiter } from "./inflight.js";
 import type { Logger } from "./logger.js";
@@ -62,6 +63,10 @@ export interface AppDeps {
   capturesPerPlayer?: SlidingWindowLimiter;
   /** Daily model-call caps (NFR-012); defaults to 3,000 overall and 30 per player. */
   dailyCaps?: DailyCaps;
+  /** Hours before a player can capture the same card again (REQ-014); defaults to 5. */
+  captureCooldownHours?: number;
+  /** Clock for capture cooldowns and capture times (tests); the system clock otherwise. */
+  now?: () => Date;
   /** Random source for rarity rolls (tests); `crypto.randomInt` otherwise. */
   random?: (max: number) => number;
   /** Absolute path of the built PWA (`dist/web`); unset serves the API only. */
@@ -180,6 +185,11 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
         new SlidingWindowLimiter(CAPTURES_PER_PLAYER.limit, CAPTURES_PER_PLAYER.windowMs),
       ...(deps.random === undefined ? {} : { random: deps.random }),
       dailyCaps: deps.dailyCaps ?? DEFAULT_DAILY_CAPS,
+      // Rounded: decimal hours such as 8.3 are not a whole number of milliseconds.
+      cooldownMs: Math.round(
+        (deps.captureCooldownHours ?? DEFAULT_CAPTURE_COOLDOWN_HOURS) * 60 * 60 * 1000,
+      ),
+      now: deps.now ?? (() => new Date()),
       inFlight: new InFlightLimiter(deps.maxInFlight ?? MAX_IDENTIFICATIONS_IN_FLIGHT),
       uploads: new InFlightLimiter(deps.maxUploads ?? MAX_UPLOADS_IN_FLIGHT),
       logger,

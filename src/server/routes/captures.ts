@@ -7,7 +7,7 @@ import type { AppEnv } from "../app.js";
 import type { Db } from "../db/connection.js";
 import { errorJson } from "../errors.js";
 import type { StoredExpansion } from "../expansion/repository.js";
-import { mintCard } from "../game/mint.js";
+import { mintCapture } from "../game/mint.js";
 import { type DailyCaps, reserveModelCall } from "../game/daily-caps.js";
 import { rollRarity } from "../game/rarity.js";
 import type { Identification, Identifier } from "../identify/client.js";
@@ -51,6 +51,9 @@ export interface CaptureRouteDeps {
   random?: (max: number) => number;
   /** Daily model-call caps, counted in the DB (AC-003.13, AC-003.14, NFR-012). */
   dailyCaps: DailyCaps;
+  /** Wait before a player can capture the same card again; 0 = off (REQ-014). */
+  cooldownMs: number;
+  now: () => Date;
   /** Identification calls in progress (AC-003.12). */
   inFlight: InFlightLimiter;
   /** Uploads being received; each buffers up to 5 MB in memory before the in-flight cap. */
@@ -87,6 +90,8 @@ export function captureRoutes({
   perPlayer,
   random,
   dailyCaps,
+  cooldownMs,
+  now,
   inFlight,
   uploads,
   logger,
@@ -233,14 +238,16 @@ export function captureRoutes({
           const body: CaptureResponse = { outcome: "none" };
           return c.json(body);
         }
-        let minted;
+        let result;
         try {
-          minted = mintCard(db, {
+          result = mintCapture(db, {
             ownerId: player.id,
             expansionId: expansion.expansion.id,
             cardId: card.id,
-            rarity: rollRarity(expansion.expansion.rarity_odds, random),
+            rollRarity: () => rollRarity(expansion.expansion.rarity_odds, random),
             flavorLine: identification.flavorLine,
+            cooldownMs,
+            now: now(),
           });
         } catch (error) {
           if (isDatabaseBusy(error)) {
@@ -249,6 +256,23 @@ export function captureRoutes({
           }
           throw error;
         }
+        if (result.kind === "cooldown") {
+          // The model call already happened and counts toward the daily caps (AC-014.5).
+          logger.info({
+            requestId: c.get("requestId"),
+            event: "capture",
+            outcome: "cooldown",
+            cardId: card.id,
+            modelLatencyMs,
+            ...usageFields(identification),
+          });
+          const body: CaptureResponse = {
+            outcome: "cooldown",
+            cooldown: { cardId: card.id, name: card.name, availableAt: result.availableAt },
+          };
+          return c.json(body);
+        }
+        const minted = result.card;
         logger.info({
           requestId: c.get("requestId"),
           event: "capture",

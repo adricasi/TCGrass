@@ -98,6 +98,8 @@ export type TestAppOptions = Partial<
     | "playerCreations"
     | "unknownFriendCodes"
     | "dailyCaps"
+    | "captureCooldownHours"
+    | "now"
     | "webRoot"
   >
 >;
@@ -118,7 +120,15 @@ export interface TestApp {
 export function testApp(identify: Identifier, options: TestAppOptions = {}): TestApp {
   const log = memoryLog();
   const { db, expansion } = seededDb();
-  const app = createApp({ db, expansion, identify, logger: log.logger, ...options });
+  // Cooldown off unless a test asks for it: most tests capture the same card repeatedly.
+  const app = createApp({
+    db,
+    expansion,
+    identify,
+    logger: log.logger,
+    captureCooldownHours: 0,
+    ...options,
+  });
   return { app, log, db, auth: playerAuth(db) };
 }
 

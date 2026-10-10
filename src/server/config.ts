@@ -60,6 +60,8 @@ const serverConfigSchema = configSchema.extend({
     emptyAsUnset,
     z.coerce.number().int().nonnegative().max(1_000).default(30),
   ),
+  // Hours before a player can capture the same card again; 0 turns it off (AC-014.4).
+  CAPTURE_COOLDOWN_HOURS: z.preprocess(emptyAsUnset, z.coerce.number().min(0).max(168).default(5)),
 });
 
 const databaseConfigSchema = z.object({ DATABASE_PATH: z.string().trim().min(1) });
@@ -83,6 +85,8 @@ export interface ServerConfig extends Config {
   trustProxy: boolean;
   /** Daily model-call caps (NFR-012). */
   dailyCaps: { global: number; perPlayer: number };
+  /** Hours before a player can capture the same card again; 0 = off (REQ-014). */
+  captureCooldownHours: number;
 }
 
 /**
@@ -129,6 +133,7 @@ export function loadServerConfig(env: NodeJS.ProcessEnv): ServerConfig {
       global: parsed.INFERENCE_DAILY_CALL_LIMIT,
       perPlayer: parsed.CAPTURES_PER_PLAYER_PER_DAY,
     },
+    captureCooldownHours: parsed.CAPTURE_COOLDOWN_HOURS,
   };
 }
 
