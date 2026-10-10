@@ -1,12 +1,13 @@
 # Product: TCGrass
 
 - Status: Approved (2026-10-08) <!-- Draft | In review | Approved -->
-- Last updated: 2026-10-08 (spec-reviewer + Gemini fixes applied)
+- Last updated: 2026-10-10 (G-7 public production after the challenge, ADR 0006)
 - Input: [idea brief](../discovery/idea-brief.md) (verdict Go, 2026-10-07) ·
   [research notes](../discovery/research-notes.md)
 
 > Photograph the real world to collect its illustrated cards, then trade with your friends.
-> Gemma recognises what you photographed on a server you control and deletes the photo. The
+> Gemma recognises what you photographed (on a server you control, or a provider whose retention
+> terms are published) and the photo is deleted. The
 > whole expansion (cards, odds, prompts, art) is an open file anyone can fork.
 
 ## Problem
@@ -14,9 +15,9 @@ People mean to walk, garden and notice nature more, but the phone wins. Existing
 either serious identification tools (iNaturalist, Seek, Merlin) or AR games set in a fictional
 world (Pokémon GO). Apps that already turn nature photos into cards (Snappit, Wildex, BioSnap)
 are closed: photos go to a third-party AI, odds are hidden and the decks cannot be changed.
-TCGrass makes photographing the real world the **only** way to get a card, keeps photos
-private by running open weights on a server we control, and puts the whole deck in an open,
-forkable file.
+TCGrass makes photographing the real world the **only** way to get a card, never stores photos
+and identifies them with open weights, on our own server or on a provider whose retention terms
+we publish (G-3, G-7), and puts the whole deck in an open, forkable file.
 
 This is a motivation problem, not a pain point: TCGrass is a hackathon entry and portfolio
 project (DEV *Hacktoberfest Open-Source AI Challenge, Week 1 "Touch Grass"*, event #79).
@@ -39,7 +40,10 @@ project (DEV *Hacktoberfest Open-Source AI Challenge, Week 1 "Touch Grass"*, eve
 - **G-4**: Open, forkable content: an expansion (cards, odds, identification hints, art
   prompts, art) is one folder that anyone can copy and load without code changes.
 - **G-5**: Social play: players add friends and trade duplicate cards 1:1.
-- **G-6**: Near-zero running cost when idle; GPU resources exist only during testing (destroyed, not powered off).
+- **G-6**: Near-zero running cost when idle; GPU resources exist only for short tests or bursts (destroyed, not powered off).
+- **G-7** (added 2026-10-10, author decision): After the challenge the same build stays online
+  as a public product anyone can play, with pay-per-use inference and a hard daily cap on
+  model calls so cost stays bounded (ADR 0006).
 
 ## Success metrics
 | Metric | Target | How it is measured |
@@ -47,10 +51,11 @@ project (DEV *Hacktoberfest Open-Source AI Challenge, Week 1 "Touch Grass"*, eve
 | Entry submitted (G-1) | Published post + video submitted by **Sun 2026-10-11 22:00 CEST** (hard deadline Sun 23:59 PDT = Mon 2026-10-12 08:59 CEST) | DEV submission timestamp |
 | Field test (G-2, G-5) | ≥ 2 players (author included), ≥ 10 cards captured in total, ≥ 1 completed trade between friends, on Sun 2026-10-11 10:00–12:30 CEST | Database counts after the test; documented in the post |
 | Identification quality (G-2) | On a 20-photo test set (12 catalogue subjects, 5 non-catalogue, 3 screens/prints): ≥ 80 % correct outcome, 100 % parseable responses, screen rejection reported (best effort; a miss is a stated limitation) | Spike script run against the draft expansion |
-| Photo retention (G-3) | 0 photos persisted by TCGrass (DB, API filesystem, API/Caddy logs); inference server logging off | Test + manual check after the field test |
+| Photo retention (G-3) | 0 photos persisted by TCGrass (DB, API filesystem, API/Caddy logs); self-hosted inference: request logging off; provider inference: its retention and training-use terms cited (Q-9) | Test + manual check after the field test |
 | Forkability (G-4) | A second expansion folder (test fixture) loads with **zero code changes** | Seed script test |
 | Model swap (G-3) | The same build runs against Gemma on DigitalOcean and Ollama on a laptop by changing env vars only | Shown in the video |
 | Cost (G-6) | ≤ $25 total cloud spend for the challenge week; GPU Droplet destroyed after the deadline | DigitalOcean billing |
+| Production cost (G-7) | ≤ $50/month total at the default daily call cap, $0 GPU spend in steady state [ASSUMPTION A-13] | DigitalOcean billing, monthly |
 
 ## Scope
 ### In scope (this version)
@@ -86,14 +91,16 @@ Build priority (cut from the bottom when time runs out): (1) expansion + seed + 
 - Login of any kind (password, OAuth, magic link), account recovery, multi-device sync,
   a delete-my-data UI.
 - Purchases, currencies or cash-out of any kind.
-- An always-on public live demo after the deadline (judges get the video and repo).
+- ~~An always-on public live demo after the deadline (judges get the video and repo).~~
+  Reversed 2026-10-10 by G-7: the game stays online as a public product.
 - Native mobile apps.
 
 ## Constraints
 - **Deadline**: Sun **2026-10-11 23:59 PDT** = Mon 2026-10-12 08:59 CEST; aim to submit by Sun
   22:00 CEST, draft done Sun 18:00 CEST.
 - **Availability**: build starts Fri 2026-10-09 afternoon (schedule in tasks.md).
-- **Budget**: 14 h total (≈ 8 h of build); ≤ $25 cloud spend.
+- **Budget**: 14 h total (≈ 8 h of build); ≤ $25 cloud spend for the challenge week; after it,
+  ≤ $50/month in production (G-7, A-13).
 - **Mandated technology**: Gemma (open weights, Apache 2.0) for identification;
   **DigitalOcean** hosting (prize track; deliberate deviation from the toolkit's GCP default,
   to be recorded as an ADR in the design phase).
@@ -132,17 +139,35 @@ reconfirmed 2026-10-07).
 - [x] Q-5 (brief Q-7): Daily trading pack shared or per player? → **Per player**, fixed for the UTC day (2026-10-07).
 - [x] Q-6 (brief Q-8): Which tool/model generates the art (terms allow publication; ideally open)? → **Gemini app (Google), model "Gemini"** (2026-10-09). Google ToS (effective 2026-07-30): Google won't claim ownership of generated content; AI content must not be presented as human-made, so the art is labelled AI-generated (`license.images`, post).
 - [~] Q-7: Which inference path is used: DO serverless Gemma, vLLM on a GPU Droplet, or Ollama on a laptop? Decided by the hour-1 spike. → Model decided: `gemma4:e4b` (18/18 on the spike, 2026-10-09). Path still open: laptop Ollama misses NFR-004 (p95 14.8 s vs ≤ 8 s); decision deferred by the author (2026-10-09).
-- [~] Q-9: DO serverless is **allowed** if the spike picks it (decided 2026-10-07); still open: cite DigitalOcean's data-use and retention terms for prompts/images in the post and design.md.
+  Production (2026-10-10): **DO serverless Gemma 4, pay per use, daily call cap** (ADR 0006,
+  Proposed until Q-10 passes).
 - [x] Q-8: Which hostname is used for HTTPS? → free `<droplet-ip>.sslip.io` name (2026-10-07).
+- [~] Q-9: DO serverless is **allowed** (decided 2026-10-07) and is the production path (ADR 0006, 2026-10-10); still open: cite DigitalOcean's data-use, retention and training-use terms for prompts/images in the privacy notice, the post and design.md. Part of accepting ADR 0006.
+- [ ] Q-10 (added 2026-10-10): Does DO serverless Gemma 4 accept images and pass the spike
+  (≥ 80 % correct, 100 % parseable, capture p95 ≤ 8 s)? Decides whether ADR 0006 is accepted
+  or its fallback order applies.
+- [ ] Q-11 (added 2026-10-10): Privacy notice and terms for the public product: photos sent to
+  the inference provider (DigitalOcean), data kept while the service runs, no account recovery
+  (A-2), who the data controller is and a contact address, how a player erases their data
+  (GDPR applies: the author is in the EU), and how to report an offensive display name. Needed
+  before the public launch, not for the field test (AC-002.11, T-017).
 
 ## Assumptions
 <!-- Anything decided without confirmation. Mark in text as [ASSUMPTION A-n]. -->
 - A-1: The backend is TypeScript/Node (the repo is a TS scaffold), not FastAPI as the brief also allowed.
-- A-2: One device = one player. Clearing browser data or losing the phone loses access to that player's cards; acceptable for a hackathon.
+- A-2: One device = one player. Clearing browser data or losing the phone loses access to that player's cards; acceptable for a hackathon. Re-affirmed 2026-10-10 for the public product (G-7): stated in the privacy notice (Q-11), revisited if players ask for recovery.
 - A-3: Exactly one expansion is active in the deployed game.
 - A-6: Friendship needs a request + accept (confirmed 2026-10-07); removing friends, blocking and cancelling a sent request are not supported.
 - A-7: Server-side capture p95 ≤ 8 s is achievable with the chosen inference path; revisit after the spike.
 - A-8: Confirmed 2026-10-07: a locked instance is shown as unavailable and cannot be requested by others until its offer resolves.
 - A-9: Confirmed 2026-10-07: the field test runs in Europe (CEST); the daily pack rolls over at 00:00 UTC = 02:00 CEST, outside the test window (Sun 10:00–12:30 CEST).
 - A-10: Ollama fallback is reached via an SSH reverse tunnel to the Droplet (end-to-end encrypted, no third party), not ngrok/Cloudflare.
-- A-11: Game data is retained until 2026-11-30, then the Droplet and volume are destroyed unless the project continues.
+- ~~A-11: Game data is retained until 2026-11-30, then the Droplet and volume are destroyed unless the project continues.~~
+  Superseded 2026-10-10 by G-7: the project continues; game data is kept while the production
+  service runs.
+- A-12 (added 2026-10-10): Production audience for the first months: up to 1,000 players,
+  100,000 card instances and about 10,000 captures a month (NFR-013). Revisit with real usage.
+- A-13 (added 2026-10-10): Production budget ≤ $50/month: app Droplet + Volume ≈ $13, at
+  most ≈ $30 of inference at the default cap of 3,000 model calls per UTC day (≈ $1/day at DO's
+  Gemma 4 prices on 2026-10-10), off-box backup storage ≈ $5 (to be confirmed). The author
+  adjusts the caps, not the code; the DO inference prepaid balance is kept small as a second stop.

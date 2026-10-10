@@ -1,7 +1,7 @@
 # Requirements: TCGrass
 
 - Status: Approved (2026-10-08) <!-- Draft | In review | Approved -->
-- Last updated: 2026-10-10 (AC-008.10 and AC-009.8 added: anti-spam limits, author decision)
+- Last updated: 2026-10-10 (AC-003.13 and NFR-012–015 added for public production, ADR 0006)
 - Input: [product.md](product.md)
 
 IDs are permanent: never renumber or reuse. Deprecate with ~~strikethrough~~ and a note.
@@ -48,6 +48,8 @@ Priority follows the build order in product.md: Must = priorities 1–3, Should 
 - Acceptance criteria:
   - AC-002.1: WHEN the app is opened for the first time on a device THE SYSTEM SHALL show a
     notice that the game is for ages 16+ and that photos are deleted after identification.
+    (Amended 2026-10-10 for G-7: the notice also says photos are sent to the identification
+    service, naming the provider when one is used, and links the privacy notice, AC-002.11.)
   - AC-002.2: WHEN a player is created THE SYSTEM SHALL assign a random secret identifier of
     256 bits and a unique public friend code of 8 uppercase characters from the alphabet
     `23456789ABCDEFGHJKMNPQRSTUVWXYZ` (no 0/O, 1/I/L); IF a generated friend code already
@@ -69,12 +71,14 @@ Priority follows the build order in product.md: Must = priorities 1–3, Should 
   - AC-002.10: WHEN the player confirms the notice and enters a valid display name THE SYSTEM
     SHALL create a player, return its secret identifier exactly once in the creation response
     and keep it in the device's storage.
+  - AC-002.11 (added 2026-10-10, G-7): WHEN the first-run screen or the profile is shown THE
+    SYSTEM SHALL show a link to the privacy notice (Q-11).
 
 ### REQ-003: Capture a card by photographing something real
 - Story: As a player, I want to photograph a real subject and get the matching card, so that
   going out and looking around is how I grow my collection.
 - Priority: Must
-- Goals: G-2, G-3
+- Goals: G-2, G-3, G-7
 - Acceptance criteria:
   - AC-003.1: WHEN the player opens the capture screen and grants camera access THE SYSTEM
     SHALL show a live camera preview and a shutter button.
@@ -106,6 +110,16 @@ Priority follows the build order in product.md: Must = priorities 1–3, Should 
   - AC-003.12: IF 5 identification calls are already in progress THEN THE SYSTEM SHALL reject the
     capture as temporarily unavailable without calling the model, and the player SHALL see a
     try-again message.
+  - AC-003.13 (added 2026-10-10, ADR 0006): IF the model calls counted for the current UTC day
+    equal `INFERENCE_DAILY_CALL_LIMIT` (NFR-012) THEN THE SYSTEM SHALL reject further captures
+    until 00:00 UTC without calling the model, and SHALL tell the player when captures resume,
+    in their local time. Checks run in this order: type and size, per-player limits
+    (AC-003.11, AC-003.14), in-flight slot (AC-003.12), then an atomic check-and-increment of
+    the daily count just before the call, so rejected photos never use the cap.
+  - AC-003.14 (added 2026-10-10, spec review): IF a player has made
+    `CAPTURES_PER_PLAYER_PER_DAY` model calls in the current UTC day (default 30) THEN THE
+    SYSTEM SHALL reject that player's further captures until 00:00 UTC without calling the
+    model, so one player can't use up the shared daily cap.
 
 ### REQ-004: Photos are never stored
 - Story: As a player, I want my photos deleted right after identification, so that pictures of
@@ -311,15 +325,19 @@ Priority follows the build order in product.md: Must = priorities 1–3, Should 
 |---|---|---|---|
 | NFR-001 | Security | All traffic over HTTPS (TLS 1.2+), HTTP redirected (301 or 308) to HTTPS. Player secrets sent only in a request header, never in URLs, never logged. Every API input validated against a schema at the boundary; model output validated against a schema and the catalogue ids. No secrets in the repo (gitleaks in pre-commit and CI). `npm audit --audit-level=high` reports 0. | Tests; CI; manual TLS check (`curl -I http://…` → 301/308 to https) |
 | NFR-002 | Privacy / data classification | 0 photos persisted (REQ-004). Stored personal data limited to display name; player secret is a credential (Confidential). No analytics, trackers or third-party scripts. | Tests for REQ-004; grep of DB/disk/logs after field test; review of served HTML |
-| NFR-003 | Availability (SLO) | During the field test (Sun 2026-10-11, 10:00–12:30 CEST) ≥ 95 % of API requests succeed (HTTP < 500) and ≥ 90 % of captures end in `card`, `none` or `screen` (not `retry`). No redeploys during the test. Daily DB backup kept 7 days on the same volume (no off-box copy). No SLO after the deadline. | Request log file on the volume; backup test |
+| NFR-003 | Availability (SLO) | (Challenge week; production: no SLO, best effort, monitored per T-017.) During the field test (Sun 2026-10-11, 10:00–12:30 CEST) ≥ 95 % of API requests succeed (HTTP < 500) and ≥ 90 % of captures end in `card`, `none` or `screen` (not `retry`). No redeploys during the test. Daily DB backup kept 7 days on the same volume (no off-box copy). No SLO after the deadline. | Request log file on the volume; backup test |
 | NFR-004 | Performance | Capture: server-side p95 ≤ 8 s (request received → response sent) [ASSUMPTION A-7]. Other API calls: p95 ≤ 500 ms server-side. Upload ≤ 1 MB after on-device downscale. | Per-request latency in the field-test log file; unit test for downscale size |
-| NFR-005 | Scalability | Designed for ≤ 50 players, ≤ 5,000 card instances and ≤ 5 concurrent captures. No more. | Load script with 5 parallel captures against a stub model |
-| NFR-006 | Cost | ≤ $25 total cloud spend for the challenge week. With no GPU resources, idle cost ≤ $12/month. A GPU Droplet is destroyed (not just powered off, which still bills) whenever testing stops and by 2026-10-12 at the latest. | DigitalOcean billing |
+| NFR-005 | Scalability | Designed for ≤ 50 players, ≤ 5,000 card instances and ≤ 5 concurrent captures. No more. (Challenge week; production target in NFR-013.) | Load script with 5 parallel captures against a stub model |
+| NFR-006 | Cost | (Challenge week; production cost in NFR-015.) ≤ $25 total cloud spend for the challenge week. With no GPU resources, idle cost ≤ $12/month. A GPU Droplet is destroyed (not just powered off, which still bills) whenever testing stops and by 2026-10-12 at the latest. | DigitalOcean billing |
 | NFR-007 | Observability | Structured JSON logs per request: request id, route, status, latency; per capture: outcome (card id / none / screen / invalid / error) and model latency. Never photo bytes, player secrets or API keys. Health endpoint reporting DB reachability. Request logs also written to a file on the volume so they survive redeploys. | Log-redaction test; manual check of health endpoint |
 | NFR-008 | Compliance / licensing | Code and expansion data Apache-2.0; image tool, model and terms recorded in `license.images`; Gemma terms respected; 16+ notice (AC-002.1); no purchases or cash-out. | Review before submission |
 | NFR-009 | Data integrity | Card instances are created only by captures and never destroyed or duplicated by trades: every instance has exactly one owner at all times. | Seeded randomized test: 500 interleaved trade actions (create, accept, decline, cancel) across 5 players; invariants checked after every action |
 | NFR-010 | Compatibility | Works on the current Chrome for Android and Safari on iOS 17+ phones, portrait, 360–430 px wide. | Manual check on 2 real phones before the field test |
 | NFR-011 | Portability | The whole stack starts with `docker compose up` plus env vars, against either DigitalOcean Gemma or local Ollama. | Run once locally with Ollama; once on the Droplet |
+| NFR-012 | Cost guardrail (added 2026-10-10) | At most `INFERENCE_DAILY_CALL_LIMIT` model calls per UTC day across all players (default 3,000 ≈ $1/day at DO Gemma 4 prices) and `CAPTURES_PER_PLAYER_PER_DAY` per player (default 30); counts kept in the DB and incremented atomically so restarts and concurrent captures can't exceed them; past a cap, captures are rejected without a model call (AC-003.13, AC-003.14). Each capture log line also records the prompt and completion tokens the endpoint reports (`usage`), so the daily cost can be computed. | Tests with a fake clock, low caps and parallel captures; daily call and token totals from the log file |
+| NFR-013 | Scalability, production (added 2026-10-10) | With a DB seeded with 1,000 players, 100,000 card instances and 10,000 offers, `GET /api/binder`, `GET /api/inbox`, `GET /api/daily-pack` and `POST /api/trades` have server-side p95 ≤ 500 ms, and 5 parallel captures against a stub model give no 5xx [ASSUMPTION A-12]. | Load script against a seeded DB (T-017) |
+| NFR-014 | Backups, production (added 2026-10-10) | The daily DB backup is also copied off the Droplet, encrypted (it holds secret hashes), kept 7 days, RPO ≤ 24 h; the mechanism uses a credential limited to one bucket or a pull from outside the Droplet (design § Security, T-017); a restore is tested once before the public launch. | Restore drill, documented in the runbook |
+| NFR-015 | Cost, production (added 2026-10-10) | ≤ $50/month total in steady state (app Droplet + Volume ≈ $13, inference at the default cap ≈ $30, off-box backup storage ≈ $5 to be confirmed); no GPU resources in steady state [ASSUMPTION A-13]. | DigitalOcean billing, monthly |
 
 ## Out of scope
 - Login, account recovery, multi-device sync: rejected 2026-10-07 in favour of an anonymous

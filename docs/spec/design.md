@@ -1,7 +1,7 @@
 # Design: TCGrass
 
 - Status: Approved (2026-10-08) <!-- Draft | In review | Approved -->
-- Last updated: 2026-10-09 (T-001 spike result recorded; Q-7 production path still open)
+- Last updated: 2026-10-10 (production inference + daily call cap, ADR 0006)
 - Implements: requirements.md (REQ-*, NFR-*)
 
 ## Overview
@@ -40,9 +40,11 @@ flowchart LR
 | Inference access | One OpenAI-compatible client · per-provider adapters | One client, env-configured | [0003](../adr/0003-call-gemma-through-an-openai-compatible-endpoint.md) |
 | Datastore | SQLite (better-sqlite3) · Managed Postgres · `node:sqlite` | SQLite + better-sqlite3 | [0004](../adr/0004-store-game-state-in-sqlite.md) |
 | Stack / layout | Hono + Preact · Fastify + React · Express + vanilla; workspaces vs one package | Hono + zod, Vite + Preact, one package | [0005](../adr/0005-use-hono-and-preact-in-one-typescript-package.md) |
+| Production inference (G-7) | DO serverless pay-per-use · always-on GPU Droplet · laptop Ollama · other provider | DO serverless Gemma 4 + daily call cap (Proposed until Q-10) | [0006](../adr/0006-run-production-inference-on-do-serverless-with-a-daily-cap.md) |
 
-The inference **path** (DO serverless vs vLLM on GPU Droplet vs Ollama) is decided by the
-hour-1 spike (product.md Q-7) and needs no design change.
+The inference **path** (DO serverless vs vLLM on GPU Droplet vs Ollama) needs no design change.
+Production uses DO serverless Gemma 4 with daily call caps ([ADR 0006](../adr/0006-run-production-inference-on-do-serverless-with-a-daily-cap.md),
+Proposed until the Q-10 check passes).
 
 **Spike result (T-001, 2026-10-09).** Validated path: **Ollama 0.35 on the author's laptop,
 model `gemma4:e4b`**. 18 labelled photos (12 catalogue, 3 non-catalogue, 3 screen/print):
@@ -51,7 +53,7 @@ no flavor line quoting photo text or describing people/places. Latency p50 6.0 s
 which misses NFR-004 (p95 ≤ 8 s) on that hardware. An earlier run with the first prompt gave
 0/3 on non-catalogue photos (forced matches at ≥ 0.90 confidence); the prompt now states that
 only the main subject counts and that look-alike kinds are "none". The photos are AI-generated,
-not field photos, so accuracy may be optimistic. Production path: still open (Q-7).
+not field photos, so accuracy may be optimistic. Production path: ADR 0006 (Proposed until Q-10).
 
 ## Components
 | Component | Responsibility | Tech / service | Requirements |
@@ -70,7 +72,8 @@ not field photos, so accuracy may be optimistic. Production path: still open (Q-
 ## Data model
 All in one SQLite database. Classification: **Confidential** = `players.secret_hash`;
 **Internal** = everything else (display names and flavor lines are the only user-related
-text). Retention: until 2026-11-30 (product.md A-11); photos are never stored (REQ-004).
+text). Retention: while the production service runs (A-11 superseded by G-7, 2026-10-10);
+photos are never stored (REQ-004).
 
 | Table | Key fields | Notes |
 |---|---|---|
@@ -106,7 +109,8 @@ on every `/api` route except `POST /api/players` and `GET /api/expansion`. Error
 `{ "error": { "code": "<slug>", "message": "<text>" } }` with 400 validation, 401
 unauthenticated, 403 not allowed, 404 not found, 409 state conflict (locked card, not
 pending, duplicate), 413 too large, 415 wrong type, 429 rate limited, 503 busy (DB busy or 5
-identification calls in flight). A model error or timeout is **not** an HTTP error: the
+identification calls in flight) and 503 `daily_limit` (a daily model-call cap is used up,
+AC-003.13/003.14; the body says when captures resume). A model error or timeout is **not** an HTTP error: the
 capture answers 200 `{outcome: "retry"}` (AC-003.9). No versioning (single client shipped
 with the server).
 
@@ -142,7 +146,8 @@ Decision order: invalid → `none`; `is_photo_of_screen` → `screen`; `none` or
 ### Configuration (env)
 `INFERENCE_BASE_URL`, `INFERENCE_MODEL`, `INFERENCE_API_KEY` (optional, secret),
 `IDENTIFY_MIN_CONFIDENCE`, `ACTIVE_EXPANSION`, `DATABASE_PATH`, `LOG_FILE_PATH`,
-`PUBLIC_HOSTNAME` (Caddy), `PORT`, `LOG_LEVEL`, `TRUST_PROXY` (`true` only behind Caddy:
+`PUBLIC_HOSTNAME` (Caddy), `PORT`, `LOG_LEVEL`, `INFERENCE_DAILY_CALL_LIMIT` (default 3,000)
+and `CAPTURES_PER_PLAYER_PER_DAY` (default 30) (NFR-012), `TRUST_PROXY` (`true` only behind Caddy:
 client IPs for rate limits then come from `X-Forwarded-For`). Parsed once at startup with zod; startup fails
 naming any missing or invalid key without printing values (AC-012.2), or if
 `ACTIVE_EXPANSION` is not loaded (AC-012.3). `.env.example` lists them without values.
@@ -182,7 +187,10 @@ naming any missing or invalid key without printing values (AC-012.2), or if
   `Permissions-Policy: camera=(self), geolocation=()`. vite-plugin-pwa uses
   `injectRegister: 'script'` (external file) so no inline script is needed.
 - Rate limits (in memory, single process): captures 10/60 s per player (AC-003.11); at most 5
-  identification calls in flight overall (AC-003.12); unknown friend codes 10/10 min per
+  identification calls in flight overall (AC-003.12). Daily caps (NFR-012) are **not** in
+  memory: `INFERENCE_DAILY_CALL_LIMIT` model calls per UTC day overall (AC-003.13) and
+  `CAPTURES_PER_PLAYER_PER_DAY` per player (AC-003.14) are counted in the DB with one atomic
+  `UPDATE … SET n = n + 1 WHERE day = ? AND n < limit`, so concurrent captures can't overshoot; unknown friend codes 10/10 min per
   player (AC-008.4); player creation 10/h per client IP (AC-002.8).
 - Threats considered:
   | Threat | Mitigation |
@@ -195,7 +203,7 @@ naming any missing or invalid key without printing values (AC-012.2), or if
   | Mass player creation / spam requests | Per-IP creation limit; friend requests need acceptance |
   | Harassment by a player (re-sent friend requests, offer flooding) | After a decline, the sender may re-send at once, 3 times; after 4 declines within 24 h they wait until 24 h after the last decline, then start over (AC-008.10, 409 `request_declined`); at most 10 pending offers per sender→recipient pair (AC-009.8, 409 `too_many_offers`). Both checked inside the IMMEDIATE transaction |
   | Photo leakage | In-memory only; log redaction test; only the configured endpoint receives it |
-  | Cost abuse of the GPU / inference | Per-player capture limit + global in-flight cap; GPU Droplet destroyed outside testing (NFR-006) |
+  | Cost abuse of the GPU / inference | Per-player capture limit + global in-flight cap; GPU Droplet destroyed outside testing (NFR-006); in production a per-player daily cap (AC-003.14) plus a global daily model-call cap bound pay-per-use spend, so one abuser can't use up everyone's allowance (NFR-012, ADR 0006) |
 
 ## Reliability and operations
 - Failure modes and handling: model timeout/error → `retry` outcome, nothing minted, photo
@@ -259,6 +267,7 @@ Estimates, to be checked against DigitalOcean's pricing page when the resources 
 | DO serverless inference (if chosen) | per-token, likely < $5 for the week |
 | Hostname | $0 (`sslip.io`); a Reserved IP is free while attached |
 | **Challenge week total** | **≤ $25** (NFR-006); idle afterwards ≤ $12/month or $0 if destroyed |
+| **Production, per month** (G-7, ADR 0006) | App Droplet + Volume ≈ $13; DO serverless Gemma 4 ≈ $0.0003/capture ($0.18/$0.50 per 1M tokens, 2026-10-10), at most ≈ $30 at the default 3,000 calls/day cap; off-box backups ≈ $5 (to be confirmed); **≤ $50** (NFR-015). An always-on RTX 4000 Ada GPU Droplet would be ≈ $555/month, so it is used only for short private bursts |
 
 ## Decisions
 | ID | Decision | ADR |
@@ -271,8 +280,9 @@ Estimates, to be checked against DigitalOcean's pricing page when the resources 
 | D-6 | Card lock enforced by a partial unique index on pending offers | — (Q-4) |
 
 ## Open questions (design)
-- Q-7 (product.md): production inference path. The spike validated Ollama + `gemma4:e4b` locally
-  (2026-10-09); choosing DO serverless / vLLM GPU Droplet / laptop Ollama is deferred.
+- Q-7 (product.md): production inference path → ADR 0006 (DO serverless + daily caps), Proposed
+  until Q-10 (DO Gemma 4 vision + spike) passes. The spike validated Ollama + `gemma4:e4b` locally
+  (2026-10-09).
 - ~~Q-8~~ resolved 2026-10-07: Caddy uses `<reserved-ip>.sslip.io` as `PUBLIC_HOSTNAME`
   (no domain cost; the Reserved IP keeps the name stable).
 - Q-9 (product.md): DO serverless data terms, if that path is chosen.
@@ -304,3 +314,7 @@ Estimates, to be checked against DigitalOcean's pricing page when the resources 
 | NFR-009 | Data model; D-3; Testing (concurrency) |
 | NFR-010 | Testing (manual) |
 | NFR-011 | Environments and deployment; ADR 0002, 0003 |
+| NFR-012 | Security design (rate limits, threats); Configuration; ADR 0006 |
+| NFR-013 | Data model (indexes on `card_instances(owner_id)`, `trade_offers(to_player_id, status)`); ADR 0004; load script (T-017) |
+| NFR-014 | Reliability and operations (backups; off-box copy designed in T-017) |
+| NFR-015 | Cost estimate (production); ADR 0006 |
