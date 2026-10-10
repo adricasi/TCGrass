@@ -51,6 +51,15 @@ const serverConfigSchema = configSchema.extend({
   LOG_FILE_PATH: z.preprocess(emptyAsUnset, z.string().optional()),
   DATABASE_PATH: z.string().trim().min(1),
   TRUST_PROXY: z.preprocess(emptyAsUnset, z.enum(["true", "false"]).default("false")),
+  INFERENCE_DAILY_CALL_LIMIT: z.preprocess(
+    emptyAsUnset,
+    // 0 pauses captures (kill switch); the upper bound stops a typo from multiplying spend.
+    z.coerce.number().int().nonnegative().max(100_000).default(3000),
+  ),
+  CAPTURES_PER_PLAYER_PER_DAY: z.preprocess(
+    emptyAsUnset,
+    z.coerce.number().int().nonnegative().max(1_000).default(30),
+  ),
 });
 
 const databaseConfigSchema = z.object({ DATABASE_PATH: z.string().trim().min(1) });
@@ -72,6 +81,8 @@ export interface ServerConfig extends Config {
   databasePath: string;
   /** Read client IPs from X-Forwarded-For: set only behind Caddy (design § Security). */
   trustProxy: boolean;
+  /** Daily model-call caps (NFR-012). */
+  dailyCaps: { global: number; perPlayer: number };
 }
 
 /**
@@ -114,6 +125,10 @@ export function loadServerConfig(env: NodeJS.ProcessEnv): ServerConfig {
     logFilePath: parsed.LOG_FILE_PATH,
     databasePath: parsed.DATABASE_PATH,
     trustProxy: parsed.TRUST_PROXY === "true",
+    dailyCaps: {
+      global: parsed.INFERENCE_DAILY_CALL_LIMIT,
+      perPlayer: parsed.CAPTURES_PER_PLAYER_PER_DAY,
+    },
   };
 }
 

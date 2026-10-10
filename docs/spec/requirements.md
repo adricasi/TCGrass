@@ -113,9 +113,9 @@ Priority follows the build order in product.md: Must = priorities 1–3, Should 
   - AC-003.13 (added 2026-10-10, ADR 0006): IF the model calls counted for the current UTC day
     equal `INFERENCE_DAILY_CALL_LIMIT` (NFR-012) THEN THE SYSTEM SHALL reject further captures
     until 00:00 UTC without calling the model, and SHALL tell the player when captures resume,
-    in their local time. Checks run in this order: type and size, per-player limits
-    (AC-003.11, AC-003.14), in-flight slot (AC-003.12), then an atomic check-and-increment of
-    the daily count just before the call, so rejected photos never use the cap.
+    in their local time. Checks run in this order: type and size, in-flight slot (AC-003.12),
+    per-minute limit (AC-003.11), then one atomic check-and-increment of both daily caps
+    (AC-003.13, AC-003.14) just before the call, so rejected photos never use a daily cap.
   - AC-003.14 (added 2026-10-10, spec review): IF a player has made
     `CAPTURES_PER_PLAYER_PER_DAY` model calls in the current UTC day (default 30) THEN THE
     SYSTEM SHALL reject that player's further captures until 00:00 UTC without calling the

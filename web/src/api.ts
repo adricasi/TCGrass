@@ -40,6 +40,8 @@ export class ApiError extends Error {
     readonly status: number,
     readonly code: string,
     message: string,
+    /** For `daily_limit`: when captures resume (ISO, UTC). */
+    readonly resumesAt?: string,
   ) {
     super(message);
   }
@@ -60,7 +62,12 @@ async function request<T extends z.ZodType>(
   if (!response.ok) {
     const error = errorResponseSchema.safeParse(json);
     throw error.success
-      ? new ApiError(response.status, error.data.error.code, error.data.error.message)
+      ? new ApiError(
+          response.status,
+          error.data.error.code,
+          error.data.error.message,
+          error.data.error.resumesAt,
+        )
       : new ApiError(response.status, "unknown", "Something went wrong. Try again.");
   }
   return schema.parse(json);

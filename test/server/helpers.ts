@@ -97,6 +97,7 @@ export type TestAppOptions = Partial<
     | "random"
     | "playerCreations"
     | "unknownFriendCodes"
+    | "dailyCaps"
   >
 >;
 

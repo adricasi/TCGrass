@@ -124,7 +124,7 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
   - Done when: tests for AC-003.5–003.7, 003.11, AC-004.1–004.3, AC-005.1–005.3,
     AC-006.1–006.5 pass; a photo on the phone produces a revealed card stored in the DB.
 
-- [ ] T-016: Daily model-call caps (added 2026-10-10, ADR 0006)
+- [x] T-016: Daily model-call caps (added 2026-10-10, ADR 0006)
   - Estimate: 0.75 h
   - Requirements: AC-003.13, AC-003.14, NFR-012
   - Depends on: T-005

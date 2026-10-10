@@ -9,7 +9,8 @@ export function errorJson(
   status: ContentfulStatusCode,
   code: string,
   message: string,
+  extra: { resumesAt?: string } = {},
 ): Response {
-  const body: ErrorResponse = { error: { code, message } };
+  const body: ErrorResponse = { error: { code, message, ...extra } };
   return c.json(body, status);
 }

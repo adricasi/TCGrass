@@ -111,17 +111,26 @@ describe("capture → mint", () => {
     expect(instances(t)).toEqual([]);
   });
 
-  it("NFR-003 answers 503 busy when the DB stays locked while minting", async () => {
+  it.each([
+    ["while reserving the daily call", 1],
+    ["while minting", 2],
+  ])("NFR-003 answers 503 busy when the DB stays locked %s", async (_label, failingCall) => {
     const t = testApp(fakeIdentifier(oak).identify);
     const busy = Object.assign(new Error("database is locked"), { code: "SQLITE_BUSY" });
     const realTransaction = t.db.transaction.bind(t.db);
-    t.db.transaction = () => {
-      throw busy;
+    let calls = 0;
+    t.db.transaction = (fn: () => unknown) => {
+      calls += 1;
+      if (calls === failingCall) {
+        throw busy;
+      }
+      return realTransaction(fn);
     };
     const response = await capture(t);
     t.db.transaction = realTransaction;
     expect(response.status).toBe(503);
     expect(errorResponseSchema.parse(await response.json()).error.code).toBe("busy");
+    expect(instances(t)).toEqual([]);
   });
 
   it("AC-003.11 does not use up the allowance on busy (503) rejections", async () => {

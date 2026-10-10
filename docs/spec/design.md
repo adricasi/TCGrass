@@ -192,8 +192,9 @@ naming any missing or invalid key without printing values (AC-012.2), or if
 - Rate limits (in memory, single process): captures 10/60 s per player (AC-003.11); at most 5
   identification calls in flight overall (AC-003.12). Daily caps (NFR-012) are **not** in
   memory: `INFERENCE_DAILY_CALL_LIMIT` model calls per UTC day overall (AC-003.13) and
-  `CAPTURES_PER_PLAYER_PER_DAY` per player (AC-003.14) are counted in the DB with one atomic
-  `UPDATE … SET n = n + 1 WHERE day = ? AND n < limit`, so concurrent captures can't overshoot; unknown friend codes 10/10 min per
+  `CAPTURES_PER_PLAYER_PER_DAY` per player (AC-003.14) are counted in the DB: both counts are
+  read and incremented inside one IMMEDIATE transaction, so concurrent captures can't
+  overshoot. A cap of `0` pauses captures (kill switch); unknown friend codes 10/10 min per
   player (AC-008.4); player creation 10/h per client IP (AC-002.8).
 - Threats considered:
   | Threat | Mitigation |

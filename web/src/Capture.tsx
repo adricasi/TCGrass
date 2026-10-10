@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "preact/hooks";
 import type { CapturedCard, CaptureResponse } from "../../src/shared/schemas/captures.js";
 import { ApiError, postCapture } from "./api.js";
 import { captureFrame } from "./capture-frame.js";
+import { describeCaptureError, SLOW_CAPTURE_MS, SLOW_CAPTURE_TEXT } from "./capture-messages.js";
 import { Reveal } from "./Reveal.js";
 
 type CameraState = "starting" | "ready" | "denied" | "busy-elsewhere" | "insecure" | "unavailable";
@@ -13,14 +14,6 @@ const RESULT_TEXT: Record<Exclude<CaptureResponse["outcome"], "card">, string> =
   screen: "That looks like a screen or a picture. Photograph the real thing!",
   retry: "The card spirits didn't answer in time. Try again.",
 };
-
-function describeError(error: unknown): string {
-  // Server messages for these codes are written for players (design § Interfaces).
-  if (error instanceof ApiError && [413, 415, 429, 503].includes(error.status)) {
-    return error.message;
-  }
-  return "Something went wrong. Try again.";
-}
 
 function cameraStateFor(error: unknown): CameraState {
   const name = error instanceof DOMException ? error.name : "";
@@ -53,6 +46,21 @@ export function Capture({
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [revealed, setRevealed] = useState<CapturedCard | null>(null);
+  const [slow, setSlow] = useState(false);
+
+  // Captures usually take ~10 s and up to 30 s (NFR-004): say so once one takes a while.
+  useEffect(() => {
+    if (!busy) {
+      setSlow(false);
+      return;
+    }
+    const timer = setTimeout(() => {
+      setSlow(true);
+    }, SLOW_CAPTURE_MS);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [busy]);
 
   useEffect(() => {
     onLockedChange(busy || revealed !== null);
@@ -117,7 +125,7 @@ export function Capture({
         onUnauthenticated();
         return;
       }
-      setMessage(describeError(error));
+      setMessage(describeCaptureError(error));
     } finally {
       setBusy(false);
     }
@@ -169,7 +177,7 @@ export function Capture({
         disabled={camera !== "ready" || busy || revealed !== null}
         onClick={() => void takePhoto()}
       >
-        {busy ? "Looking…" : "Capture"}
+        {busy ? (slow ? SLOW_CAPTURE_TEXT : "Looking…") : "Capture"}
       </button>
       <p class="result" aria-live="polite">
         {message}
