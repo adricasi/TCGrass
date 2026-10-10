@@ -1,11 +1,27 @@
 import { type Context, Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 
-import { createTradeRequestSchema, type SentOffersResponse } from "../../shared/schemas/trades.js";
+import {
+  createTradeRequestSchema,
+  type OfferAnswer,
+  type SentOffersResponse,
+} from "../../shared/schemas/trades.js";
 import type { AppEnv } from "../app.js";
 import type { Db } from "../db/connection.js";
 import { errorJson } from "../errors.js";
-import { cancelOffer, createOffer, listSentOffers, TradeError } from "../game/trades.js";
+import {
+  acceptOffer,
+  cancelOffer,
+  createOffer,
+  declineOffer,
+  listSentOffers,
+  TradeError,
+} from "../game/trades.js";
+
+/** A positive integer id from the URL, strictly digits (no "0x10", "1e2" or "+5"). */
+function parseOfferId(raw: string): number | undefined {
+  return /^[1-9]\d{0,15}$/.test(raw) && Number.isSafeInteger(Number(raw)) ? Number(raw) : undefined;
+}
 
 function tradeErrorJson(c: Context<AppEnv>, error: unknown): Response {
   if (error instanceof TradeError) {
@@ -22,7 +38,10 @@ function sentOffer(db: Db, senderId: number, offerId: number) {
   return offer;
 }
 
-/** `/api/trades`: create, cancel and list sent offers (REQ-009). Auth by the default-deny middleware. */
+/**
+ * `/api/trades`: create, cancel and list sent offers (REQ-009); accept and decline received
+ * ones (REQ-010). Auth by the default-deny middleware.
+ */
 export function tradeRoutes(db: Db): Hono<AppEnv> {
   const routes = new Hono<AppEnv>();
 
@@ -59,8 +78,8 @@ export function tradeRoutes(db: Db): Hono<AppEnv> {
   );
 
   routes.post("/:id/cancel", (c) => {
-    const offerId = Number(c.req.param("id"));
-    if (!Number.isSafeInteger(offerId) || offerId <= 0) {
+    const offerId = parseOfferId(c.req.param("id"));
+    if (offerId === undefined) {
       return errorJson(c, 404, "offer_not_found", "No such offer.");
     }
     const senderId = c.get("player").id;
@@ -71,6 +90,39 @@ export function tradeRoutes(db: Db): Hono<AppEnv> {
       return tradeErrorJson(c, error);
     }
   });
+
+  for (const [action, accept] of [
+    ["accept", true],
+    ["decline", false],
+  ] as const) {
+    routes.post(`/:id/${action}`, (c) => {
+      const offerId = parseOfferId(c.req.param("id"));
+      if (offerId === undefined) {
+        return errorJson(c, 404, "offer_not_found", "No such offer.");
+      }
+      const recipientId = c.get("player").id;
+      try {
+        if (!accept) {
+          declineOffer(db, recipientId, offerId);
+          const body: OfferAnswer = { id: offerId, status: "declined" };
+          return c.json(body);
+        }
+        if (acceptOffer(db, recipientId, offerId) === "failed") {
+          // The failed status is saved; the answer explains why nothing moved (AC-010.5).
+          return errorJson(
+            c,
+            409,
+            "offer_failed",
+            "One of the cards changed hands, so this offer failed.",
+          );
+        }
+        const body: OfferAnswer = { id: offerId, status: "accepted" };
+        return c.json(body);
+      } catch (error) {
+        return tradeErrorJson(c, error);
+      }
+    });
+  }
 
   routes.get("/sent", (c) => {
     const body: SentOffersResponse = { offers: listSentOffers(db, c.get("player").id) };

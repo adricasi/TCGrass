@@ -1,7 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { BinderResponse } from "../../src/shared/schemas/binder.js";
-import { cancelTradeOffer, createTradeOffer, getSentOffers } from "../../web/src/api.js";
+import {
+  answerTradeOffer,
+  cancelTradeOffer,
+  createTradeOffer,
+  getSentOffers,
+} from "../../web/src/api.js";
 import { offerableCards, tradeStatusLabel } from "../../web/src/trade-view.js";
 
 const counts = { common: 0, rare: 0, epic: 0, legendary: 0 };
@@ -119,5 +124,17 @@ describe("trades API client", () => {
   it("AC-009.6 reads the sent offers", async () => {
     stubFetch(Response.json({ offers: [sentOffer] }));
     await expect(getSentOffers("s3cret")).resolves.toEqual({ offers: [sentOffer] });
+  });
+
+  it("AC-010.3 accepts and declines through the offer's own URL", async () => {
+    const fetch = stubFetch(Response.json({ id: 9, status: "accepted" }));
+    await expect(answerTradeOffer("s3cret", 9, true)).resolves.toEqual({
+      id: 9,
+      status: "accepted",
+    });
+    expect(fetch.mock.calls[0]?.[0]).toBe("/api/trades/9/accept");
+    fetch.mockResolvedValue(Response.json({ id: 9, status: "declined" }));
+    await answerTradeOffer("s3cret", 9, false);
+    expect(fetch.mock.calls[1]?.[0]).toBe("/api/trades/9/decline");
   });
 });

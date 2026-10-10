@@ -1,8 +1,10 @@
-import { useEffect, useState } from "preact/hooks";
+import { useEffect, useRef, useState } from "preact/hooks";
 
 import { Binder } from "./Binder.js";
 import { Capture } from "./Capture.js";
-import { getInbox } from "./api.js";
+import type { InboxResponse } from "../../src/shared/schemas/friends.js";
+import { ApiError, getInbox } from "./api.js";
+import { pollWhileVisible } from "./poll.js";
 import { FirstRun } from "./FirstRun.js";
 import { Friends } from "./Friends.js";
 import { Inbox } from "./Inbox.js";
@@ -32,31 +34,47 @@ export function App() {
   const [session, setSession] = useState<Session | "loading">("loading");
   const [tab, setTab] = useState<Tab>("capture");
   const [captureLocked, setCaptureLocked] = useState(false);
-  const [inboxCount, setInboxCount] = useState(0);
+  /** The one copy of the inbox: the badge and the Inbox screen both read it. */
+  const [inbox, setInbox] = useState<InboxResponse | null>(null);
+  /** Bumped by every refresh, so the sent-offers list reloads with it. */
+  const [inboxVersion, setInboxVersion] = useState(0);
+  const latestRequest = useRef(0);
   const secret = session !== "loading" && session.kind === "ready" ? session.secret : null;
 
   function refreshInbox(): void {
     if (secret === null) {
       return;
     }
+    const request = ++latestRequest.current;
     getInbox(secret)
-      .then((inbox) => {
-        setInboxCount(inbox.counts.total);
+      .then((response) => {
+        // Ignore a slow answer that arrives after a newer one was asked for.
+        if (request === latestRequest.current) {
+          setInbox(response);
+          setInboxVersion((version) => version + 1);
+        }
       })
-      .catch(() => undefined);
+      .catch((error: unknown) => {
+        if (error instanceof ApiError && error.status === 401) {
+          notFound();
+        }
+      });
   }
 
-  // The inbox badge is polled every 20 s (design § Interfaces). refreshInbox reads only
-  // `secret`, so `[secret]` is the full dependency list.
+  // Opening the inbox shows fresh data rather than the last poll's.
+  useEffect(() => {
+    if (tab === "inbox") {
+      refreshInbox();
+    }
+  }, [tab]);
+
+  // The badge is polled every 20 s while visible (design § Interfaces, AC-010.1).
+  // refreshInbox reads only `secret`, so `[secret]` is the full dependency list.
   useEffect(() => {
     if (secret === null) {
       return;
     }
-    refreshInbox();
-    const timer = window.setInterval(refreshInbox, 20_000);
-    return () => {
-      window.clearInterval(timer);
-    };
+    return pollWhileVisible(refreshInbox, 20_000, document);
   }, [secret]);
 
   useEffect(() => {
@@ -135,10 +153,21 @@ export function App() {
         <Friends secret={session.secret} player={session.player} onUnauthenticated={notFound} />
       )}
       {tab === "inbox" && (
-        <Inbox secret={session.secret} onChanged={refreshInbox} onUnauthenticated={notFound} />
+        <Inbox
+          secret={session.secret}
+          inbox={inbox}
+          version={inboxVersion}
+          onChanged={refreshInbox}
+          onUnauthenticated={notFound}
+        />
       )}
       {tab === "odds" && <Odds />}
-      <Nav current={tab} onChange={setTab} disabled={captureLocked} inboxCount={inboxCount} />
+      <Nav
+        current={tab}
+        onChange={setTab}
+        disabled={captureLocked}
+        inboxCount={inbox?.counts.total ?? 0}
+      />
     </>
   );
 }
