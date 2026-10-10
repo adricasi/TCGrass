@@ -239,7 +239,7 @@ challenge*; this milestone replaces it.
     screenshots saved for the post.
 
 ## Milestone 5: Field test and ship (Sat 10-10 – Sun 10-11)
-- [ ] T-011: Pre-field-test hardening
+- [~] T-011: Pre-field-test hardening
   - Estimate: 0.5 h
   - Requirements: NFR-001, NFR-002, NFR-003, NFR-005, NFR-010
   - Depends on: T-005
@@ -249,6 +249,17 @@ challenge*; this milestone replaces it.
     phones; confirm firewall rules and tags.
   - Done when: backup test passes; load script shows no 5xx at 5 parallel captures (a 6th is
     rejected per AC-003.12); checklist passes on Chrome Android and Safari iOS.
+  - Result (2026-10-10): partial. Agent part done: `src/server/backup.ts` (online backup per UTC
+    day to `<db dir>/backups/tcgrass-YYYY-MM-DD.db`, written as `.partial`, fsynced, renamed;
+    folder 700, files 600; keeps 7; checked at startup and hourly; a failure is logged, never
+    fatal; shutdown waits for a running backup), started from `main.ts`;
+    `scripts/load-captures.ts` (`npm run load`) runs the real app with a stub model and is also a
+    CI test: 5 parallel → 5 × 200, 6 → 5 × 200 + 1 × 503 `busy`;
+    `docs/field-test-checklist.md`; `docs/deploy.md` backup, restore, `chmod 700` and load-check
+    steps. 449 tests (11 new). Reviews: code-reviewer and security-auditor, no Blockers;
+    Should-fix applied (private file modes, safe restore with `install` + integrity check,
+    shutdown during a backup, leftover `.partial` test). Waiting on 👤: run the checklist on
+    Chrome Android and Safari iOS; confirm firewall rules and tags.
 
 - [x] T-012: 👤 Card art for Everyday Nature
   - Estimate: ~1 h of the human's time, outside build hours
