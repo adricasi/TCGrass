@@ -64,9 +64,15 @@ write_files:
   - path: /etc/systemd/system/tcgrass-deploy.timer
     encoding: b64
     content: ${deploy_timer_b64}
+  - path: /etc/systemd/system/tcgrass-metadata-block.service
+    encoding: b64
+    content: ${metadata_block_b64}
 
 runcmd:
-  # Data volume first: attached at creation and formatted ext4 by DigitalOcean. Stop here if it
+  # Metadata block before Docker is even installed (it starts Docker on install).
+  - systemctl daemon-reload
+  - systemctl enable --now tcgrass-metadata-block.service
+  # Data volume: attached at creation and formatted ext4 by DigitalOcean. Stop here if it
   # never appears, rather than run the app on the boot disk.
   - mkdir -p ${mount_point}
   - >-

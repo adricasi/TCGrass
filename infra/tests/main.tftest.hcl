@@ -96,6 +96,11 @@ run "user_data_holds_no_app_secrets_and_pulls_prod" {
   }
 
   assert {
+    condition     = strcontains(digitalocean_droplet.app.user_data, "systemctl enable --now tcgrass-metadata-block.service")
+    error_message = "Containers must be blocked from the metadata service before Docker starts."
+  }
+
+  assert {
     condition     = strcontains(digitalocean_droplet.app.user_data, "RequiresMountsFor=/mnt/tcgrass")
     error_message = "Docker must wait for the data volume to be mounted."
   }

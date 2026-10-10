@@ -10,9 +10,11 @@ set -euo pipefail
 cd "$APP_DIR"
 
 # Containers must not reach the metadata service: it serves user data, which holds the registry
-# pull credentials. DOCKER-USER exists once Docker runs; re-checked every run (lost on reboot).
-if ! iptables -C DOCKER-USER -d 169.254.169.254/32 -j DROP 2>/dev/null; then
-  iptables -I DOCKER-USER -d 169.254.169.254/32 -j DROP
+# pull credentials. tcgrass-metadata-block.service sets this before Docker starts; this re-check
+# only heals the rule if something removed it, and refuses to deploy if it can't.
+if ! iptables -t raw -C PREROUTING -d 169.254.169.254/32 -j DROP 2>/dev/null; then
+  echo "metadata block missing; restoring it" >&2
+  iptables -t raw -I PREROUTING -d 169.254.169.254/32 -j DROP
 fi
 
 if [[ ! -f .env ]]; then

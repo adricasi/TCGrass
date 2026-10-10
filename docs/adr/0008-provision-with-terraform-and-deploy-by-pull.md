@@ -55,8 +55,9 @@ required reviewer for the release), both limited to `main`. CI runs `fmt`, `vali
   is "don't approve"; no inbound path from CI.
 - Negative / risks:
   - Registry pull credentials sit in Terraform state, plan files and the Droplet's user data
-    (read-only, expire after 90 days). Containers are blocked from the metadata service
-    (`DOCKER-USER` rule set by the agent).
+    (read-only, expire after 90 days). Containers are blocked from the metadata service by a
+    `raw`-table rule installed by a systemd unit that runs before Docker starts (fails closed:
+    Docker requires it); the deploy agent re-checks it on every run.
   - Anyone who can push to `main` can push images; branch protection on `main` is the
     control. A pushed image runs as the non-root, read-only `api` container and can read its
     environment (the inference key) and the DB.

@@ -43,6 +43,7 @@ resource "digitalocean_droplet" "app" {
     deploy_service_b64 = base64encode(file("${path.module}/templates/tcgrass-deploy.service"))
     deploy_timer_b64   = base64encode(file("${path.module}/templates/tcgrass-deploy.timer"))
     auto_upgrades_b64  = base64encode(file("${path.module}/templates/20auto-upgrades"))
+    metadata_block_b64 = base64encode(file("${path.module}/templates/tcgrass-metadata-block.service"))
     # The stack definition comes from this repository, never from the pulled image: a registry
     # push must not be able to change what runs as root on the host (ADR 0008).
     compose_b64   = base64encode(file("${path.module}/../compose.yaml"))

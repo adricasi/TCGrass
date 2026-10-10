@@ -75,7 +75,7 @@ capture can take a moment.
 | Reverse proxy | TLS (Let's Encrypt), HTTP→HTTPS (308), body size cap, compression, sets `X-Forwarded-For` | Caddy 2 | NFR-001 |
 | Infrastructure (`infra/`) | VPC, Droplet + cloud-init, Volume, Reserved IP, Cloud Firewall, Container Registry, project, tags | Terraform, `digitalocean/digitalocean` ~> 2.105, state in DO Spaces | ADR 0008, NFR-011 |
 | Release pipeline | Build and push `tcgrass-api:sha-<commit>`; promote to `:prod` after the operator's approval | GitHub Actions `deploy.yml` (environment `production`), DO Container Registry | ADR 0008 |
-| Deploy agent | Every minute: pull `:prod`; on a new image, seed and `docker compose up -d --wait` with the `compose.yaml` and `Caddyfile` Terraform wrote (never from the image); blocks containers from the metadata service | systemd timer + shell script on the Droplet | ADR 0008, NFR-003 |
+| Deploy agent | Every minute: pull `:prod`; on a new image, seed and `docker compose up -d --wait` with the `compose.yaml` and `Caddyfile` Terraform wrote (never from the image); re-checks the metadata block, which a unit installs before Docker starts | systemd timer + shell script on the Droplet | ADR 0008, NFR-003 |
 | Datastore | Game state | SQLite file (WAL) on a DO Volume | ADR 0004 |
 | Inference endpoint | Gemma vision | DO serverless / vLLM on GPU Droplet / Ollama | REQ-003, 012 |
 
