@@ -12,6 +12,15 @@ npm run build                            # compile to dist/
 npm audit --audit-level=high             # dependency vulnerabilities
 ```
 
+## Self-hosting
+`docker compose up -d --build` runs Caddy (HTTPS) in front of the API, which serves the PWA,
+card art and `/api`, with SQLite in `DATA_DIR`. Copy `.env.example` to `.env` and fill it in
+first, and create the data directory writable by the container user
+(`mkdir -p data && sudo chown 1000:1000 data`, or your `DATA_DIR`). Seed the expansion once,
+before the first start:
+`docker compose run --rm api node dist/server/seed-cli.js expansions/everyday-nature`.
+The full Droplet runbook is in [docs/deploy.md](docs/deploy.md).
+
 ## Development workflow (AI-assisted, spec-driven)
 Built with the personal ai-toolkit (`~/ai-toolkit`). In Claude Code:
 1. `/spec` — define or refine the specification in `docs/spec/` (once, then when requirements change).

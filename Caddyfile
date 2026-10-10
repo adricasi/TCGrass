@@ -1,0 +1,19 @@
+# HTTPS for PUBLIC_HOSTNAME (e.g. 203-0-113-7.sslip.io), certificate from Let's Encrypt;
+# `localhost` uses Caddy's internal CA. Plain HTTP is redirected to HTTPS with 308 (NFR-001).
+# Security headers are set by the API only (design.md § Security design).
+{$PUBLIC_HOSTNAME} {
+	# Outer bound only: the API enforces the exact photo limit (5 MiB + multipart overhead)
+	# and answers 413 with the JSON error shape.
+	request_body {
+		max_size 6MB
+	}
+
+	# Caddy replaces any client-sent X-Forwarded-For (no trusted proxies configured), so the
+	# API's last-entry rule reads the real client address.
+	reverse_proxy api:3000
+
+	# The JS bundle shrinks ~70 % for phones on cellular; card PNGs are skipped (not compressible).
+	encode zstd gzip
+
+	header -Server
+}

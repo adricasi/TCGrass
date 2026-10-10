@@ -68,7 +68,7 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
   - Result (2026-10-09): done. Laptop test by the author: webcam photo of a dog returned `dog`
     via Ollama + `gemma4:e4b` (dog instead of oak; same code path, oak verified in the T-001 spike).
 
-- [ ] T-002b: Deploy skeleton to the Droplet over HTTPS
+- [~] T-002b: Deploy skeleton to the Droplet over HTTPS
   - Estimate: 1 h
   - Requirements: NFR-001, NFR-011, AC-004.4
   - Depends on: T-002a
@@ -83,6 +83,12 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
   - Note (2026-10-10, G-7): the field test and production use DO serverless `gemma-4-31B-it`
     (T-018 passed, ADR 0006 accepted), with a production model access key restricted to the
     Droplet's VPC and the VPC-local DNS resolver enabled. **T-016 (daily caps) comes first.**
+  - Result (2026-10-10): partial. Agent part done on `infra/T-002b-deploy-skeleton`: Dockerfile,
+    `compose.yaml` (+ `compose.local.yaml` for Ollama), `Caddyfile`, API serves `dist/web`,
+    runbook `docs/deploy.md`. Waiting on 👤: CI build + Docker build step in
+    `.github/workflows/ci-node.yml` (agent edits denied there), Droplet setup, deploy, phone oak
+    test, `curl -I` redirect. sslip.io and nip.io are **not** on the Public Suffix List
+    (checked 2026-10-10): fallback is a hostname under a listed domain (e.g. duckdns.org).
 
 ## Milestone 2: Collect (T-003 Fri evening; rest Sat 10-10 morning)
 - [x] T-003: Database + expansion seed command

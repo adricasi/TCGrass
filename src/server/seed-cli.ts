@@ -1,6 +1,7 @@
 /**
  * Entry point of the seed command: `npm run seed -- <expansion-dir> [--placeholders]`
- * (`npm run seed:prod -- …` from the compiled build). Reads DATABASE_PATH from the
+ * (`node dist/server/seed-cli.js …` from the compiled build, as in the container, whose
+ * read-only root filesystem rules out npm). Reads DATABASE_PATH from the
  * environment (or `.env`).
  */
 import { runSeed } from "./seed.js";
