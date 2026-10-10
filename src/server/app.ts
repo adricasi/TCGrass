@@ -16,6 +16,7 @@ import { binderRoutes } from "./routes/binder.js";
 import { cardRoutes, SVG_CSP } from "./routes/cards.js";
 import { friendRequestRoutes, friendRoutes, UNKNOWN_FRIEND_CODES } from "./routes/friends.js";
 import { inboxRoutes } from "./routes/inbox.js";
+import { tradeRoutes } from "./routes/trades.js";
 import { captureRoutes } from "./routes/captures.js";
 import { expansionRoutes } from "./routes/expansion.js";
 import { meRoutes, playerRoutes } from "./routes/players.js";
@@ -159,6 +160,7 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
   app.route("/api/friend-requests", friendRequestRoutes(friendDeps));
   app.route("/api/friends", friendRoutes(friendDeps));
   app.route("/api/inbox", inboxRoutes(deps.db));
+  app.route("/api/trades", tradeRoutes(deps.db));
   app.route("/cards", cardRoutes(deps.db, logger));
 
   app.route(

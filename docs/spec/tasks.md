@@ -141,7 +141,7 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
   - Done when: tests for AC-008.1–008.9 pass; two phones become friends and see each other's
     binders.
 
-- [ ] T-008: Trade offers: create, cancel, sent list
+- [x] T-008: Trade offers: create, cancel, sent list
   - Estimate: 0.75 h
   - Requirements: REQ-009
   - Depends on: T-007

@@ -1,8 +1,10 @@
 import { useEffect, useState } from "preact/hooks";
 
 import type { FriendBinderResponse } from "../../src/shared/schemas/friends.js";
+import type { TradeCard } from "../../src/shared/schemas/trades.js";
 import { ApiError, getFriendBinder } from "./api.js";
 import { formatCaptureDate, progressLabel } from "./binder-view.js";
+import { TradePicker } from "./TradePicker.js";
 import { rarityPresentation } from "./rarity.js";
 
 /**
@@ -22,6 +24,8 @@ export function FriendBinder({
 }) {
   const [data, setData] = useState<FriendBinderResponse | null>(null);
   const [failed, setFailed] = useState(false);
+  const [wanted, setWanted] = useState<TradeCard | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     getFriendBinder(secret, friendCode)
@@ -36,6 +40,21 @@ export function FriendBinder({
     // onUnauthenticated only flips App state; re-fetching on parent re-renders is not wanted.
   }, [secret, friendCode]);
 
+  if (wanted !== null && data !== null) {
+    return (
+      <TradePicker
+        secret={secret}
+        wanted={wanted}
+        friendName={data.friend.displayName}
+        onUnauthenticated={onUnauthenticated}
+        onDone={(message) => {
+          setWanted(null);
+          setNotice(message);
+        }}
+      />
+    );
+  }
+
   return (
     <section class="friend-binder">
       <button type="button" class="back" onClick={onBack}>
@@ -48,6 +67,9 @@ export function FriendBinder({
           <h2>
             {data.friend.displayName} <span class="progress">{progressLabel(data.binder)}</span>
           </h2>
+          <p class="result" aria-live="polite">
+            {notice}
+          </p>
           {data.binder.owned === 0 && <p>No cards yet.</p>}
           <ul class="instances">
             {data.binder.cards
@@ -64,7 +86,24 @@ export function FriendBinder({
                       <span class="binder-name">{card.name}</span>
                       <span class="card-rarity">{rarity.label}</span>
                       <span class="instance-date">{formatCaptureDate(instance.capturedAt)}</span>
-                      {instance.locked && <span class="locked">Unavailable: in a trade offer</span>}
+                      {instance.locked ? (
+                        <span class="locked">Unavailable: in a trade offer</span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setWanted({
+                              instanceId: instance.id,
+                              cardId: card.id,
+                              name: card.name,
+                              rarity: instance.rarity,
+                              imageUrl: card.imageUrl,
+                            });
+                          }}
+                        >
+                          Offer a trade
+                        </button>
+                      )}
                     </li>
                   );
                 }),
