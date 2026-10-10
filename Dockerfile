@@ -4,12 +4,15 @@
 
 FROM node:24-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20 AS build
 WORKDIR /app
-# Toolchain only for the fallback in case no better-sqlite3 prebuilt binary matches.
+# better-sqlite3 compiles from source in its install script (allowed via `allowScripts` in
+# package.json, which npm 11.19+ requires), so the toolchain is required.
 RUN apt-get update \
   && apt-get install -y --no-install-recommends python3 make g++ \
   && rm -rf /var/lib/apt/lists/*
 COPY package.json package-lock.json ./
-RUN npm ci
+# npm skips unapproved install scripts without failing: fail here, not at startup, if the
+# native module didn't build (e.g. a version bump not yet re-approved in `allowScripts`).
+RUN npm ci && node -e "require('better-sqlite3')(':memory:').close()"
 COPY tsconfig.json tsconfig.build.json ./
 COPY src ./src
 COPY web ./web
