@@ -75,7 +75,21 @@ echo "mounted"
 install -d -m 0755 /etc/systemd/system/docker.service.d
 printf '[Unit]\nRequiresMountsFor=%s\n' "$mount_point" > /etc/systemd/system/docker.service.d/10-data-volume.conf
 systemctl daemon-reload
-# The API runs as uid 1000; the DB and its backups hold secret hashes (owner-only).
+# The API container runs as uid/gid 1000. Give that id a dedicated, non-login system account, so
+# it has a name (logrotate needs one) and a later admin user (harden-ssh.sh) gets another uid
+# instead of sharing ownership of the game data.
+if ! getent group 1000 >/dev/null; then
+  groupadd --system --gid 1000 tcgrass
+fi
+if ! getent passwd 1000 >/dev/null; then
+  useradd --system --uid 1000 --gid 1000 --no-create-home --home-dir /nonexistent \
+    --shell /usr/sbin/nologin tcgrass
+fi
+data_user="$(getent passwd 1000 | cut -d: -f1)"
+data_group="$(getent group 1000 | cut -d: -f1)"
+[[ "$data_user" == "tcgrass" ]] ||
+  echo "WARNING: uid 1000 belongs to '$data_user', not a dedicated account; it owns the game data"
+# The DB and its backups hold secret hashes (owner-only).
 install -d -o 1000 -g 1000 -m 0700 "$data_dir"
 ls -ld "$data_dir"
 
@@ -86,8 +100,12 @@ install -m 0644 "$repo_root/Caddyfile" "$app_dir/Caddyfile"
 ls -l "$app_dir"
 
 step "Log rotation for the API's JSON log"
+# The log folder is writable by the container. logrotate runs as root, so it must drop to the
+# folder's owner (su) before touching it; otherwise a compromised container could plant a
+# symlink and have root truncate or overwrite any file.
 cat > /etc/logrotate.d/tcgrass <<CONF
 $data_dir/logs/api.log {
+  su $data_user $data_group
   daily
   rotate 14
   maxsize 50M

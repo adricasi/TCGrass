@@ -68,8 +68,10 @@ ssh root@<reserved-ip> 'bash /root/tcgrass-src/deploy/droplet/setup.sh --mount <
 ```
 
 It installs `jq` and `sqlite3`; blocks containers from the metadata service before Docker
-starts; makes Docker wait for the Volume; creates `<VOL>/tcgrass` (uid 1000, mode 700); puts
-`compose.yaml` and the `Caddyfile` in `/opt/tcgrass`; sets up log rotation; installs the deploy
+starts; makes Docker wait for the Volume; creates a non-login system account `tcgrass` for
+uid 1000 (the API container's user) and `<VOL>/tcgrass` owned by it (mode 700); puts
+`compose.yaml` and the `Caddyfile` in `/opt/tcgrass`; sets up log rotation (as `tcgrass`, not
+root, since the container can write the log folder); installs the deploy
 agent (`tcgrass-deploy.timer`) and the `tcgrass-compose` helper. It ends with what's still
 missing (registry credentials, `.env`). On a re-run with a release already deployed, it also
 applies the new `compose.yaml` and restarts Caddy for the new `Caddyfile`.
