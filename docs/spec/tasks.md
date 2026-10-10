@@ -239,6 +239,23 @@ challenge*; this milestone replaces it.
     screenshots saved for the post.
 
 ## Milestone 5: Field test and ship (Sat 10-10 – Sun 10-11)
+- [~] T-022: Terraform infrastructure and pull-based CD (added 2026-10-10, ADR 0008)
+  - Estimate: ~2 h agent + ~45 min human
+  - Requirements: NFR-001, NFR-003, NFR-011, NFR-015; G-7
+  - Depends on: T-002a; replaces the manual console steps of T-002b
+  - Scope: `infra/` (VPC, Droplet + cloud-init, Volume, Reserved IP, firewall, registry,
+    project, tags; state in Spaces); deploy agent (systemd timer) on the Droplet;
+    workflows `deploy.yml` (build, push, approved promotion) and `terraform.yml` (fmt, validate,
+    test) and a `ci-node.yml` patch, all in `.reviews/` for the author to commit (agents can't
+    edit `.github/workflows/`); `compose.yaml` `API_IMAGE`; runbook.
+    👤 Spaces bucket + key, Terraform token, `plan`/`apply`, GitHub variable, secrets and
+    `production` environment, inference key, `/opt/tcgrass/.env`, first approval.
+  - Done when: `terraform validate` and `terraform test` pass; `iac-reviewer` has no Blockers;
+    👤 `apply` succeeds; an approved release is running on the Droplet; then the T-002b
+    checks (phone oak test, `curl -I` redirect).
+  - Cut-off: if not serving by Sun 00:00 CEST, use the runbook's fallback (build on the
+    Droplet Terraform created).
+
 - [~] T-011: Pre-field-test hardening
   - Estimate: 0.5 h
   - Requirements: NFR-001, NFR-002, NFR-003, NFR-005, NFR-010

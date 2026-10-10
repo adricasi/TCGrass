@@ -1,6 +1,7 @@
 # 0002. Host on a single DigitalOcean Droplet with Docker Compose
 
-- Status: Accepted (2026-10-08)
+- Status: Accepted (2026-10-08); the infrastructure-as-code deviation is superseded by
+  [ADR 0008](0008-provision-with-terraform-and-deploy-by-pull.md) (2026-10-10)
 - Date: 2026-10-07
 - Deciders: adricasi
 

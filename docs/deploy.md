@@ -1,8 +1,10 @@
 # Deploying TCGrass
 
-How the stack in `compose.yaml` runs on one DigitalOcean Droplet (ADR 0002, design.md
-§ Environments and deployment). **The human runs every command here**; agents only prepare
-them. Self-hosting elsewhere uses the same steps from "Deploy" on.
+How the stack in `compose.yaml` runs on one DigitalOcean Droplet (ADR 0002, ADR 0008,
+design.md § Environments and deployment): infrastructure from Terraform, releases from
+GitHub Actions with your approval, pulled by an agent on the Droplet. **The human runs every
+command here**; agents only prepare them. Self-hosting elsewhere: see "Fallback" and
+"Local run".
 
 ```
 phone ──HTTPS──▶ Caddy :443 (Let's Encrypt) ──HTTP──▶ api :3000 (not published)
@@ -11,121 +13,123 @@ phone ──HTTPS──▶ Caddy :443 (Let's Encrypt) ──HTTP──▶ api :3
                                                      └─ HTTPS ─▶ INFERENCE_BASE_URL
 ```
 
-## 1. Droplet setup (once)
-Create these in the DigitalOcean console, all in one region. Tag every resource with
-`app:tcgrass`, `env:prod`, `owner:adricasi` and `managed-by:manual`.
+## 1. Infrastructure with Terraform (once)
+Everything in DigitalOcean except the inference key lives in [`infra/`](../infra/) (ADR 0008):
+VPC, Droplet (set up by cloud-init), Volume, Reserved IP, Cloud Firewall, Container Registry,
+project and tags (`app:tcgrass`, `env:prod`, `owner:adricasi`, `managed-by:terraform`).
+**You run `plan` and `apply`**; agents only write and validate the code.
 
-- [ ] **Droplet:** Ubuntu 24.04 LTS, Basic, 1 GB RAM (the image build runs `tsc` and Vite).
-  SSH key login only, monitoring on, in the default VPC.
-- [ ] **Volume:** 10 GB, attached to the Droplet. Let the console format and auto-mount it
-  (it appears under `/mnt/<volume-name>`).
-- [ ] **Reserved IP:** assign it to the Droplet.
-- [ ] **Cloud Firewall:** applied to the Droplet's tag.
-  - Inbound: TCP 80 and 443, plus UDP 443 (HTTP/3), from anywhere; TCP 22 from your own IP
-    only.
-  - Outbound: all.
-- [ ] **Inference key:** a dedicated DO serverless *model access key*, never a DO API
-  token. Restrict it to the Droplet's VPC and enable the VPC-local DNS resolver (G-7,
-  ADR 0006). Use the console names from DO's docs; they were not verified here. If the key
-  can't be VPC-restricted, a leaked key works from anywhere, so the billing alert matters more.
-- [ ] **Billing alert** on the account. `INFERENCE_DAILY_CALL_LIMIT` caps only our own
-  server's calls. Rotate the key after the challenge.
+### 1a. By hand, before the first `init`
+- [ ] **Spaces bucket** for the state, in `ams3`, private, e.g. `tcgrass-tfstate-<you>`; and a
+  **Spaces access key** limited to that bucket if the console offers it.
+- [ ] **DO API token for Terraform** (it creates Droplets, Volumes, VPCs, firewalls, Reserved
+  IPs, tags, projects and the registry). Keep it in your shell only.
+- [ ] **Billing alert** on the account.
 
-On the Droplet: first log in as root once, create a sudo user with your SSH key, set
-`PermitRootLogin no` and confirm `PasswordAuthentication no` in `/etc/ssh/sshd_config`. Then
-work as that user (`ssh <user>@<reserved-ip>`):
-
+### 1b. Plan and apply (from your laptop)
 ```bash
-# Security updates: on by default in Ubuntu 24.04. Check, and enable if needed.
-systemctl status unattended-upgrades
-sudo dpkg-reconfigure -plow unattended-upgrades
-
-# 2 GB swap so the image build fits in 1 GB of RAM.
-sudo fallocate -l 2G /swapfile && sudo chmod 600 /swapfile
-sudo mkswap /swapfile && sudo swapon /swapfile
-echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab
+cd infra
+cp backend.hcl.example backend.hcl            # fill in the bucket name (git-ignored)
+cp terraform.tfvars.example terraform.tfvars  # your SSH public key, your IP/32, registry name
+export DIGITALOCEAN_TOKEN=...                  # Terraform token (not saved anywhere)
+export AWS_ACCESS_KEY_ID=... AWS_SECRET_ACCESS_KEY=...   # Spaces key
+terraform init -backend-config=backend.hcl
+terraform plan -out=tfplan
+terraform show -json tfplan > plan.json         # optional: hand it to iac-reviewer
+terraform apply tfplan
+terraform output                                 # reserved_ip, public_hostname, ssh_command, vpc_id
 ```
+Cloud-init takes 3–5 minutes after the apply: Docker, the Volume mounted at `/mnt/tcgrass`, the
+data folder (`/mnt/tcgrass/data`, uid 1000, mode 700), log rotation, unattended upgrades and the
+deploy agent (`tcgrass-deploy.timer`). Check it with
+`ssh root@<reserved_ip> cloud-init status --wait`.
 
-Install Docker Engine and the Compose plugin from Docker's apt repository by following
-<https://docs.docker.com/engine/install/ubuntu/>. Then:
+The Volume and the registry have `prevent_destroy`. Changing the cloud-init template does not
+touch the running Droplet; rebuild it on purpose with
+`terraform apply -replace=digitalocean_droplet.app` (the Volume and the IP survive; write
+`.env` again afterwards).
 
-```bash
-git clone https://github.com/adricasi/TCGrass.git /opt/tcgrass
-# The API runs as uid 1000 and needs a writable data directory on the Volume.
-sudo mkdir -p /mnt/<volume-name>/tcgrass
-sudo chown 1000:1000 /mnt/<volume-name>/tcgrass
-# The DB and its backups hold the players' secret hashes: readable by the API user only.
-sudo chmod 700 /mnt/<volume-name>/tcgrass
-```
+### 1c. Inference key (by hand, ADR 0006)
+A dedicated DO serverless *model access key*, never a DO API token. Restrict it to the VPC from
+`terraform output vpc_id` and enable the VPC-local DNS resolver. Use the console names from DO's
+docs; they were not verified here. Rotate it after the challenge.
 
-Docker-published ports bypass UFW, so the DO Cloud Firewall is what protects the box.
-
-Rotate the API's log file on the Volume. Container stdout is rotated by Compose. Pino
-appends, so `copytruncate` is safe:
-
-```bash
-sudo tee /etc/logrotate.d/tcgrass <<'CONF'
-/mnt/<volume-name>/tcgrass/logs/api.log {
-  daily
-  rotate 14
-  maxsize 50M
-  compress
-  missingok
-  notifempty
-  copytruncate
-}
-CONF
-```
+### 1d. GitHub (once)
+- [ ] **Workflows** (agents can't edit `.github/workflows/`): from the repo root,
+  `cp .reviews/workflows/*.yml .github/workflows/ && git apply .reviews/ci-node.patch`,
+  then review and commit them yourself.
+- [ ] **Variable** (repository) `DO_REGISTRY_NAME` = your `registry_name`.
+- [ ] **Environment `registry`**: deployment branches = `main` only, no reviewer.
+- [ ] **Environment `production`**: deployment branches = `main` only, **you as required
+  reviewer**. The release job can't run without your approval.
+- [ ] **Environment secrets in both** (never repository secrets, which any workflow could
+  read): `DO_REGISTRY_USERNAME` (your DO account email) and `DO_REGISTRY_TOKEN`, a DO API
+  token used only to push images, with an expiry date. DO's docs don't say which custom
+  scopes a push needs: try `registry:read` + `registry:update`, and widen only if the push
+  is refused.
+- [ ] **Branch protection** on `main` (PR required): anyone who can push to `main` can also
+  push images with the `registry` environment's token.
 
 ### Hostname
-`PUBLIC_HOSTNAME` is `<reserved-ip-with-dashes>.sslip.io`, e.g. `203-0-113-7.sslip.io`.
+`PUBLIC_HOSTNAME` is `terraform output -raw public_hostname`, e.g. `203-0-113-7.sslip.io`.
 
 **Check (2026-10-10): neither sslip.io nor nip.io is on the Public Suffix List.** Every user
 of either service therefore shares Let's Encrypt's per-domain certificate limit, and issuance
-can fail. After the first `up`, run `docker compose logs caddy`:
+can fail. After the first deploy, run `docker compose logs caddy` in `/opt/tcgrass`:
 - `certificate obtained successfully`: done.
 - A `rateLimited` error: switch to a hostname under a domain that *is* on the list, such as
   a free `<name>.duckdns.org` with an A record pointing at the Reserved IP. Then set
   `PUBLIC_HOSTNAME` and run `docker compose up -d` again.
 
-### `.env`
-Create it with no world-readable window, then fill it in with an editor (never `echo` a
-key, which leaves it in shell history). Keep it only on the Droplet:
+### `.env` (once, on the Droplet)
+The deploy agent waits until this file exists. Create it with no world-readable window, then
+fill it in with an editor (never `echo` a key, which leaves it in shell history):
 
 ```bash
+ssh root@<reserved_ip>
 install -m 600 /dev/null /opt/tcgrass/.env && nano /opt/tcgrass/.env
 ```
 
 Set these variables, with the names taken from `.env.example`:
 
-- **Hosting:** `PUBLIC_HOSTNAME`, and `DATA_DIR=/mnt/<volume-name>/tcgrass`.
+- **Hosting:** `PUBLIC_HOSTNAME`, `DATA_DIR=/mnt/tcgrass/data` and
+  `API_IMAGE=<terraform output -raw api_image>` (so manual `docker compose` commands use the
+  registry image too).
 - **Inference:** `INFERENCE_BASE_URL`, `INFERENCE_MODEL` and `INFERENCE_API_KEY` (secret),
   for DO serverless `gemma-4-31B-it`.
-- **Game settings:** `ACTIVE_EXPANSION`, `APP_ENV=production`, `LOG_LEVEL=info`,
-  `IDENTIFY_MIN_CONFIDENCE`, `INFERENCE_DAILY_CALL_LIMIT`, `CAPTURES_PER_PLAYER_PER_DAY` and
-  `CAPTURE_COOLDOWN_HOURS`.
+- **Game settings:** `ACTIVE_EXPANSION=everyday-nature`, `APP_ENV=production`,
+  `LOG_LEVEL=info`, `IDENTIFY_MIN_CONFIDENCE`, `INFERENCE_DAILY_CALL_LIMIT`,
+  `CAPTURES_PER_PLAYER_PER_DAY` and `CAPTURE_COOLDOWN_HOURS`.
 
 Compose always sets `PORT`, `DATABASE_PATH`, `LOG_FILE_PATH` and `TRUST_PROXY` itself.
 
-## 2. Deploy
-Deploy from a git tag, so a rollback is just checking out the previous tag.
+## 2. Deploy (CI/CD, ADR 0008)
+1. Merge to `main`. `deploy.yml` builds the image and pushes `tcgrass-api:sha-<commit>`.
+2. The `release` job waits for **your approval** in GitHub (environment `production`).
+3. Approving moves `:prod` to that commit. Within about a minute the Droplet's agent pulls it,
+   seeds the expansion (idempotent; migrations are additive) and runs
+   `docker compose up -d --wait`. A release counts as deployed only once the stack is healthy;
+   otherwise the agent retries every minute (fix forward, or roll back below).
 
-```bash
-cd /opt/tcgrass
-git fetch --tags && git rev-parse <tag>   # matches the SHA you expect? (tags can move)
-git checkout <tag>
-docker compose build
-# The API refuses to start until the active expansion is seeded (AC-012.3). Seeding migrates
-# the DB and runs inside the image, so the stored card-art paths match the container.
-docker compose run --rm api node dist/server/seed-cli.js expansions/everyday-nature
-docker compose up -d
-```
+`compose.yaml` and `Caddyfile` on the Droplet come from Terraform (cloud-init), not from the
+image, so a registry push can't change how the host runs containers. When you change either
+file: `scp compose.yaml Caddyfile root@<reserved_ip>:/opt/tcgrass/` then
+`docker compose up -d` there (or replace the Droplet on purpose, see 1b).
 
-Re-run the seed command only when `expansions/` changes. It refuses to remove cards that
-players own.
+Watch it on the Droplet: `journalctl -u tcgrass-deploy -f`.
+
+**Rollback:** run the `deploy` workflow by hand ("Run workflow") with the full SHA of an earlier
+commit on `main`, and approve it. Migrations are additive during the challenge week, so the DB
+stays compatible.
+
+**Freeze:** during the field test, don't approve releases (NFR-003).
+
+**Registry space:** the starter tier holds 500 MiB. Old `sha-*` tags add up; delete them in the
+console and run the registry's garbage collection, or move to the basic tier.
 
 ### Check
 ```bash
+cd /opt/tcgrass
 docker compose ps                          # api "healthy", caddy "running"
 curl -I http://<hostname>/                 # expect 308 with Location: https://<hostname>/
 curl -s https://<hostname>/healthz         # {"status":"ok"}
@@ -134,23 +138,30 @@ curl -s https://<hostname>/healthz         # {"status":"ok"}
 Then, on a real phone, open `https://<hostname>`: the camera preview should appear, and a
 photo of an oak should return `oak` (the T-002b Done-when).
 
-Paste back the output of `docker compose ps`, the `curl -I` headers, the `/healthz` body and
-the phone result.
+### Fallback: build on the Droplet
+If CI/CD isn't working in time, the Droplet Terraform created can still build from source:
 
-### Freeze
-No redeploys from Sat 2026-10-10 18:00 CEST until the field test ends (NFR-003).
+```bash
+ssh root@<reserved_ip>
+systemctl stop tcgrass-deploy.timer                          # keep the agent out of the way
+git clone https://github.com/adricasi/TCGrass.git /opt/tcgrass-src && cd /opt/tcgrass-src
+git checkout <commit>
+cp /opt/tcgrass/.env .env && sed -i '/^API_IMAGE=/d' .env   # build locally instead of pulling
+fallocate -l 2G /swapfile && chmod 600 /swapfile && mkswap /swapfile && swapon /swapfile
+docker compose build
+docker compose run --rm api node dist/server/seed-cli.js expansions/everyday-nature
+docker compose up -d
+```
 
 ## 3. Operate
 - **Logs:** `docker compose logs -f api` (stdout). JSON request logs are also written to
   `${DATA_DIR}/logs/api.log`, which survives redeploys.
-- **Kill switch:** set `INFERENCE_DAILY_CALL_LIMIT=0` in `.env`, then run
-  `docker compose up -d api`.
+- **Kill switch:** set `INFERENCE_DAILY_CALL_LIMIT=0` in `/opt/tcgrass/.env`, then run
+  `docker compose up -d api` in `/opt/tcgrass`.
 - **Capture cooldown:** set `CAPTURE_COOLDOWN_HOURS` in `.env` (default 5, from 0 to 168,
   decimals allowed, 0 = off), then run `docker compose up -d api`. The new value applies at once
-  to cooldowns already running. For the field test, decide before the Saturday 18:00 deploy;
-  a config-only restart like this one is allowed until Sun 09:30 CEST (product.md Q-12).
-- **Rollback:** `git checkout <previous-tag> && docker compose up -d --build`. Migrations are
-  additive during the challenge week, so the DB stays compatible.
+  to cooldowns already running. For the field test, decide before the last deploy; a
+  config-only restart like this one is allowed until Sun 09:30 CEST (product.md Q-12).
 - **Backups (NFR-003):** the API writes one online backup per UTC day to
   `${DATA_DIR}/backups/tcgrass-YYYY-MM-DD.db` (at startup if today's is missing, then checked
   hourly) and keeps the newest 7. Each run logs `backup_done`, or `backup_failed` at error level.
@@ -166,6 +177,12 @@ No redeploys from Sat 2026-10-10 18:00 CEST until the field test ends (NFR-003).
   docker compose start api
   ```
   (`sqlite3` may need `sudo apt install sqlite3` on the Droplet.)
+- **Registry pull credentials** expire after `pull_credentials_ttl_days` (default 90). Before
+  that: `terraform apply -replace=digitalocean_container_registry_docker_credentials.pull`,
+  then copy the new `docker_credentials` to `/root/.docker/config.json` (mode 600) on the
+  Droplet (cloud-init doesn't re-run).
+- **Plans hold secrets:** `tfplan` and `plan.json` contain the pull credentials in clear text;
+  they're git-ignored, delete them after review.
 - **Load check:** `npm run load -- --parallel 6` (laptop, stub model, no inference cost) expects
   5 × 200 and 1 × 503 `busy` (NFR-005, AC-003.12).
 - **Before the field test:** run [field-test-checklist.md](field-test-checklist.md) on both
@@ -197,7 +214,8 @@ It removes every cache and unregisters itself. Player secrets in localStorage ar
 To run against Ollama on the laptop:
 1. In `.env`, set `INFERENCE_BASE_URL=http://host.docker.internal:11434/v1`,
    `PUBLIC_HOSTNAME=localhost` and `DATA_DIR=./data`.
-2. Run `mkdir -p data && sudo chown 1000:1000 data` (the API runs as uid 1000), then the deploy commands above, with
+2. Run `mkdir -p data && sudo chown 1000:1000 data` (the API runs as uid 1000), then the
+   "Fallback" commands above from `docker compose build` on, with
    `-f compose.yaml -f compose.local.yaml` after `docker compose`. The override maps
    `host.docker.internal` to the host; production doesn't get that mapping.
 

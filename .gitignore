@@ -15,6 +15,14 @@ secrets/
 *.tfstate.*
 *.tfvars
 !*.tfvars.example
+.terraform/
+.terraform.tfstate.lock.info
+backend.hcl
+# Plans hold prior-state values in clear text, including the registry pull credentials.
+tfplan
+*.tfplan
+plan.json
+*plan*.json
 
 # --- local AI tooling (ai-toolkit, Claude Code, Gemini/Antigravity) ---
 .claude/

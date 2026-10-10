@@ -1,0 +1,98 @@
+#cloud-config
+# TCGrass app Droplet (ADR 0008). Rendered by Terraform; changing it does not touch a running
+# Droplet (ignore_changes) until it is replaced on purpose.
+package_update: true
+package_upgrade: true
+package_reboot_if_required: true
+packages:
+  - ca-certificates
+  - curl
+  - unattended-upgrades
+  - sqlite3
+
+write_files:
+  # Security updates install themselves (ADR 0002).
+  - path: /etc/apt/apt.conf.d/20auto-upgrades
+    encoding: b64
+    content: ${auto_upgrades_b64}
+  # Read-only registry credentials for the deploy agent.
+  - path: /root/.docker/config.json
+    permissions: "0600"
+    encoding: b64
+    content: ${docker_config_b64}
+  # Docker (and the restart-policy containers) must never start before the data volume is
+  # mounted, or the API would create a fresh, empty DB on the boot disk.
+  - path: /etc/systemd/system/docker.service.d/10-data-volume.conf
+    content: |
+      [Unit]
+      RequiresMountsFor=${mount_point}
+  # The stack definition, from this repository (never from the pulled image).
+  - path: /opt/tcgrass/compose.yaml
+    permissions: "0644"
+    encoding: b64
+    content: ${compose_b64}
+  - path: /opt/tcgrass/Caddyfile
+    permissions: "0644"
+    encoding: b64
+    content: ${caddyfile_b64}
+  # The API's JSON log on the volume; container stdout is rotated by Compose. Pino appends, so
+  # copytruncate is safe.
+  - path: /etc/logrotate.d/tcgrass
+    content: |
+      ${mount_point}/data/logs/api.log {
+        daily
+        rotate 14
+        maxsize 50M
+        compress
+        missingok
+        notifempty
+        copytruncate
+      }
+  - path: /etc/tcgrass/deploy.env
+    permissions: "0644"
+    content: |
+      API_IMAGE=${api_image}
+      APP_DIR=/opt/tcgrass
+      MOUNT_POINT=${mount_point}
+  - path: /usr/local/bin/tcgrass-deploy
+    permissions: "0755"
+    encoding: b64
+    content: ${deploy_script_b64}
+  - path: /etc/systemd/system/tcgrass-deploy.service
+    encoding: b64
+    content: ${deploy_service_b64}
+  - path: /etc/systemd/system/tcgrass-deploy.timer
+    encoding: b64
+    content: ${deploy_timer_b64}
+
+runcmd:
+  # Data volume first: attached at creation and formatted ext4 by DigitalOcean. Stop here if it
+  # never appears, rather than run the app on the boot disk.
+  - mkdir -p ${mount_point}
+  - >-
+    sh -c 'grep -q "${volume_name}" /etc/fstab || echo
+    "/dev/disk/by-id/scsi-0DO_Volume_${volume_name} ${mount_point} ext4 defaults,nofail,discard,noatime 0 2"
+    >> /etc/fstab'
+  - >-
+    sh -c 'for i in $(seq 1 60); do [ -e /dev/disk/by-id/scsi-0DO_Volume_${volume_name} ] && break; sleep 5; done;
+    [ -e /dev/disk/by-id/scsi-0DO_Volume_${volume_name} ]'
+  - mount -a
+  - mountpoint -q ${mount_point}
+  # The API runs as uid 1000; the DB and its backups hold secret hashes (owner-only).
+  - install -d -o 1000 -g 1000 -m 0700 ${mount_point}/data
+  # Docker Engine + Compose plugin from Docker's signed apt repository. The lock timeout waits
+  # for unattended-upgrades, which often holds dpkg on first boot.
+  - install -m 0755 -d /etc/apt/keyrings
+  - curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+  - chmod a+r /etc/apt/keyrings/docker.asc
+  - >-
+    sh -c 'echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc]
+    https://download.docker.com/linux/ubuntu $(. /etc/os-release && echo $VERSION_CODENAME) stable"
+    > /etc/apt/sources.list.d/docker.list'
+  - apt-get -o DPkg::Lock::Timeout=600 update
+  - >-
+    apt-get -o DPkg::Lock::Timeout=600 install -y
+    docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+  - systemctl daemon-reload
+  - systemctl restart docker
+  - systemctl enable --now tcgrass-deploy.timer

@@ -1,0 +1,10 @@
+[Unit]
+Description=TCGrass pull-based deploy (ADR 0008)
+Wants=network-online.target
+After=network-online.target docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/tcgrass/deploy.env
+ExecStart=/usr/local/bin/tcgrass-deploy
