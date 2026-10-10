@@ -1,7 +1,12 @@
 import type { z } from "zod";
 
+import { type BinderResponse, binderResponseSchema } from "../../src/shared/schemas/binder.js";
 import { type CaptureResponse, captureResponseSchema } from "../../src/shared/schemas/captures.js";
 import { errorResponseSchema } from "../../src/shared/schemas/errors.js";
+import {
+  type ExpansionResponse,
+  expansionResponseSchema,
+} from "../../src/shared/schemas/expansion.js";
 import {
   type CreatePlayerResponse,
   createPlayerResponseSchema,
@@ -69,4 +74,14 @@ export function postCapture(secret: string, photo: Blob): Promise<CaptureRespons
     { method: "POST", headers: authHeader(secret), body },
     captureResponseSchema,
   );
+}
+
+/** `GET /api/binder`: the player's cards for the active expansion. */
+export function getBinder(secret: string): Promise<BinderResponse> {
+  return request("/api/binder", { headers: authHeader(secret) }, binderResponseSchema);
+}
+
+/** `GET /api/expansion` (public): cards and odds of the active expansion. */
+export function getExpansion(): Promise<ExpansionResponse> {
+  return request("/api/expansion", {}, expansionResponseSchema);
 }
