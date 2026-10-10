@@ -61,7 +61,7 @@ capture can take a moment.
 ## Components
 | Component | Responsibility | Tech / service | Requirements |
 |---|---|---|---|
-| PWA (`web/`) | First-run notice + name, camera capture + downscale, reveal, binder, odds, friends, inbox (polling), trades, daily pack | Vite, Preact, TypeScript, vite-plugin-pwa | REQ-002, 003, 005–011, 013 |
+| PWA (`web/`) | First-run notice + name, camera capture + downscale, reveal, binder, odds, friends, inbox (polling), trades, daily pack | Vite, Preact, TypeScript; hand-written manifest + app-shell service worker (`web/public/`) | REQ-002, 003, 005–011, 013 |
 | Shared schemas (`src/shared/`) | zod schemas + types for API requests/responses and the expansion file | zod | NFR-001 |
 | API (`src/server/`) | HTTP routes, auth middleware, rate limits, security headers (set here only, not in Caddy), static files | Hono + `@hono/node-server` on Node.js LTS (`engines` ≥ 22; Docker image uses the current LTS) | all REQ |
 | Identification (`src/server/identify/`) | Build the prompt from the catalogue, call the endpoint with a 30-s timeout, at most 5 calls in flight (AC-003.12), validate the answer | OpenAI-compatible HTTP via `fetch` + `AbortSignal.timeout` | REQ-003, 004, 012 |
@@ -187,8 +187,10 @@ naming any missing or invalid key without printing values (AC-012.2), or if
 - Headers (set by Hono only): `Content-Security-Policy: default-src 'self'; img-src 'self' blob: data:;
   connect-src 'self'; script-src 'self'; style-src 'self'; frame-ancestors 'none'`,
   `Strict-Transport-Security`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`,
-  `Permissions-Policy: camera=(self), geolocation=()`. vite-plugin-pwa uses
-  `injectRegister: 'script'` (external file) so no inline script is needed.
+  `Permissions-Policy: camera=(self), geolocation=()`. The service worker
+  is registered from the bundled module (no inline script). It caches only the app shell and
+  `/assets`, never `/api` or `/cards` (AC-002.10). vite-plugin-pwa was dropped on 2026-10-10
+  (author decision): it added 274 dev packages for a manifest and a ~70-line worker.
 - Rate limits (in memory, single process): captures 10/60 s per player (AC-003.11); at most 5
   identification calls in flight overall (AC-003.12). Daily caps (NFR-012) are **not** in
   memory: `INFERENCE_DAILY_CALL_LIMIT` model calls per UTC day overall (AC-003.13) and
@@ -306,7 +308,7 @@ Estimates, to be checked against DigitalOcean's pricing page when the resources 
 | REQ-010 | Data model (state machine); Interfaces (inbox, accept/decline); D-3 |
 | REQ-011 | Data model (daily_packs, daily_pack_cards); Interfaces (`GET /api/daily-pack`) |
 | REQ-012 | Interfaces (configuration, identification call); D-2 |
-| REQ-013 | Components (PWA, vite-plugin-pwa) |
+| REQ-013 | Components (PWA, manifest + service worker); Security (headers) |
 | NFR-001 | Security design (TLS, headers, validation, secrets); Environments (CI) |
 | NFR-002 | Data model (classification); Security design (data protection) |
 | NFR-003 | Reliability and operations |

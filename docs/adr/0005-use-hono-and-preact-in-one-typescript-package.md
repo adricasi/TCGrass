@@ -22,7 +22,8 @@ Layout options: npm workspaces (`api/`, `web/`, `shared/`) vs **one package** wi
 
 ## Decision
 We will build the API with Hono (`@hono/node-server`) and zod, and the PWA with Vite + Preact
-(+ vite-plugin-pwa), in the existing single npm package: `src/server`, `src/shared`
+(+ vite-plugin-pwa; dropped 2026-10-10 for a hand-written manifest and service worker, see
+design.md § Security design), in the existing single npm package: `src/server`, `src/shared`
 (schemas and types used by both), `web/` (Vite root). The API serves the built PWA and card
 images, because this is the least setup for one deployable while keeping types shared.
 
