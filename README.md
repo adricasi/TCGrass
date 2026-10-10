@@ -21,6 +21,12 @@ before the first start:
 `docker compose run --rm api node dist/server/seed-cli.js expansions/everyday-nature`.
 The full Droplet runbook is in [docs/deploy.md](docs/deploy.md).
 
+## Identification test set
+`spike-photos/<card-id>/` (plus `none/` and `screen/`) holds the labelled images used by
+`npm run spike -- spike-photos` to measure identification accuracy. Every image is
+AI-generated, so the set shows no real person, home or place. Add only AI-generated images
+there; real photos stay out of the repository.
+
 ## Development workflow (AI-assisted, spec-driven)
 Built with the personal ai-toolkit (`~/ai-toolkit`). In Claude Code:
 1. `/spec` — define or refine the specification in `docs/spec/` (once, then when requirements change).

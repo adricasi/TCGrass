@@ -53,6 +53,9 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
     considered). Deviation approved by the author: the production path part of Q-7 is
     deferred; only the model and local path are recorded. 18 photos, not 20 (2 non-catalogue
     photos missing).
+  - Note (2026-10-10): the spike photos are AI-generated (committed on purpose, see AGENTS.md),
+    so the spike measures the model on synthetic images; real-world accuracy and screen
+    rejection are confirmed by the T-014 field test.
 
 - [x] T-002a: Local skeleton: camera photo → API → Gemma → result on screen
   - Estimate: 1 h
