@@ -1,7 +1,8 @@
 # Tasks: TCGrass
 
 - Status: Approved (2026-10-08) <!-- Draft | In review | Approved -->
-- Last updated: 2026-10-10 (T-018 done: DO serverless chosen; earlier: T-016–T-018 added)
+- Last updated: 2026-10-10 (rescope: T-010 deferred, T-019 cooldown and T-020 reveal + polish
+  added, T-021 backlog; earlier: T-018 done, T-016–T-018 added)
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
 Order = implementation order. Each task is a small vertical slice (≤ ~1 day), references
@@ -18,7 +19,7 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
 | **Fri 10-09, 14:00–19:00** (≈ 5 h) | M1: T-001, T-002a, T-002b; then T-003 | **≈ 16:00 (hour 2)**: inference path chosen, else Ollama fallback. **Kill**: no working Gemma endpoint by Fri 20:00 → skip this week |
 | Fri evening (not build time) | 👤 T-012: generate the remaining card art | — |
 | **Sat 10-10, 09:00–13:00** (≈ 3–4 h) | T-004, T-005, T-006, T-013 → minimum submittable | **≈ 13:00 (hour 8)**: apply the cut list |
-| Sat 10-10, 14:00–17:30 (accepted overrun) | M3: T-007, T-008, T-009; T-011; T-010 only if M3 is done by 16:30 | Deploy the final build by 18:00; no redeploys after that |
+| Sat 10-10, 14:00–17:30 (accepted overrun) | M3: T-007, T-008, T-009; then, once the deployed build works on a phone, M4: T-019, T-020 (timeboxed 1.5 h); T-011 | Deploy the final build by 18:00; no redeploys after that |
 | **Sun 10-11, 10:00–12:30** | 👤 T-014 field test, **regardless of state** | — |
 | Sun 10-11, 13:00–21:00 | T-015: fixes, 60-s video, post; destroy the GPU Droplet | Draft done 18:00; **submit by 22:00 CEST** (13:00 PDT) |
 | Mon 10-12, 08:59 CEST | — | **Hard deadline** (Sun 23:59 PDT) |
@@ -27,8 +28,13 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
 - **Needed for the field-test trade metric**: T-007–T-009 (Must, but cuttable for submission).
 - **Added 2026-10-10 (G-7):** T-016 (0.75 h) is not cuttable when the deploy uses pay-per-use
   inference; T-018 (👤 DO check, ~10 min) runs before T-002b.
-- **Cut list, in order**: T-010 (daily pack) → AC-009.6 sent-offers screen → UI component
-  tests → T-011 backups and load script → T-013 install (keep the AC-013.2 hint).
+- **Saturday load (2026-10-10 rescope)**: M3 left (≈ 2.75 h) + T-019 (1 h) + T-020 (1.5 h) +
+  T-011 (0.5 h) ≈ 5.75 h in a 3.5 h window, so ≈ 2.25 h over with T-002b still open. Apply the
+  cut list at 16:30.
+- **Cut list, in order** (changed 2026-10-10; T-010 daily pack is deferred, not cut; matches the
+  product.md build priority): AC-009.6 sent-offers screen → T-020 visual polish beyond the
+  reveal animation → UI component tests → T-019 cooldown → T-020 reveal animation (AC-006.6) →
+  T-011 backups and load script → T-013 install (keep the AC-013.2 hint).
 
 ## Milestone 1: Walking skeleton (Fri 10-09 afternoon)
 - [x] T-001: Inference client + identification spike
@@ -191,15 +197,38 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
   - Done when: tests for AC-010.1–010.8 pass; the NFR-009 randomized invariant test (500
     seeded actions) passes; a trade between two phones completes and both binders update.
 
-## Milestone 4: Daily trading pack (Sat 10-10, only if M3 is done by 16:30)
-- [ ] T-010: Daily trading pack
+## Milestone 4: Capture cooldown and reveal polish (Sat 10-10, after the deploy works)
+Changed 2026-10-10 (author decision): the daily trading pack (T-010) moved to *After the
+challenge*; this milestone replaces it.
+
+- [ ] T-019: Capture cooldown per card
   - Estimate: 1 h
-  - Requirements: REQ-011, REQ-009 (AC-009.4 daily-pack case)
-  - Depends on: T-009
-  - Scope: lazy per-player pack per UTC day (injected clock + RNG), availability flag,
-    `GET /api/daily-pack`, pack screen with "request" starting the trade picker; allow
-    `daily_pack` as a trade source.
-  - Done when: tests for AC-011.1–011.5 and AC-009.4 (pack case) pass.
+  - Requirements: REQ-014 (AC-014.1–014.6), NFR-007, NFR-009
+  - Depends on: T-005, T-016
+  - Scope: additive migration `003` with `capture_cooldowns` (ADR 0007);
+    `CAPTURE_COOLDOWN_HOURS` in `src/server/config.ts` (default 5, 0–168, 0 = off) and
+    `.env.example`; inside the mint transaction, after a valid match and before the rarity
+    roll, check and record the capture time; `cooldown` outcome with `{cardId, name,
+    availableAt}` in the `src/shared/` capture schema; PWA message "You found a <name>
+    recently — next one from <local time>"; capture log outcome `cooldown`; `docs/deploy.md`:
+    how the admin changes the cooldown (edit `.env`, `docker compose up -d`).
+  - Done when: tests for AC-014.1–014.6 pass (fake clock; a trade doesn't start a cooldown;
+    a `cooldown` capture counts toward both daily caps; two parallel captures of one card mint
+    one); the NFR-009 invariant test still passes; `game-invariants-reviewer` has no Blockers.
+
+- [ ] T-020: Reveal animation and visual polish (timeboxed: 1.5 h)
+  - Estimate: 1.5 h, hard stop
+  - Requirements: REQ-006 (AC-006.6), NFR-010
+  - Depends on: T-005; start only once the deployed build works on a phone (T-002b)
+  - Scope: reveal entry animation (CSS keyframes in the bundled stylesheet, e.g. card flip
+    with a rarity glow, stronger for Epic/Legendary; tap to skip; none under
+    `prefers-reduced-motion`); then, in the time left, a visual pass over capture, reveal,
+    binder, friends and inbox: colour and spacing tokens, typography (system font stack or
+    self-hosted font files only, CSP `'self'`), buttons, empty states. No new runtime
+    dependencies; no inline styles in HTML; 360–430 px portrait.
+  - Done when: UI tests for AC-006.6 pass (skip on tap; no animation under reduced motion);
+    existing UI tests pass; 👤 checked on Chrome Android and Safari iOS; before/after
+    screenshots saved for the post.
 
 ## Milestone 5: Field test and ship (Sat 10-10 – Sun 10-11)
 - [ ] T-011: Pre-field-test hardening
@@ -244,7 +273,7 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
 - [ ] T-014: 👤 Field test (Sun 2026-10-11 10:00–12:30 CEST, regardless of state)
   - Requirements: success metrics in product.md; NFR-003, NFR-004
   - Depends on: whatever is deployed by Sat 18:00 (at least T-005)
-  - Scope: resolve Q-1 (players); walk/garden/birding with ≥ 2 players; afterwards a
+  - Scope: resolve Q-1 (players) and Q-12 (`CAPTURE_COOLDOWN_HOURS` for the test); walk/garden/birding with ≥ 2 players; afterwards a
     script reports cards captured, trades completed, capture p95 latency, error rate; check
     no photos in DB, API filesystem or API/Caddy logs; no redeploys during the test.
   - Done when: metrics recorded in `docs/spec/progress.md`; issues filed as tasks or noted.
@@ -267,24 +296,25 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
 | REQ-003 | T-001, T-002a, T-005, T-016 (AC-003.13, AC-003.14) |
 | REQ-004 | T-005, T-001 + T-002b (AC-004.4) |
 | REQ-005 | T-005, T-006 |
-| REQ-006 | T-005 |
+| REQ-006 | T-005, T-020 (AC-006.6) |
 | REQ-007 | T-006 |
 | REQ-008 | T-007 |
-| REQ-009 | T-008, T-010 |
+| REQ-009 | T-008 (daily-pack case deferred with T-010) |
 | REQ-010 | T-009 |
-| REQ-011 | T-010 |
+| REQ-011 | T-010 (deferred to after the challenge) |
 | REQ-012 | T-001, T-002a, T-003 (AC-012.3) |
 | REQ-013 | T-004 (AC-013.2), T-013 |
+| REQ-014 | T-019 |
 | NFR-001 | T-002a, T-002b, T-011 |
 | NFR-002 | T-005, T-011, T-014 |
 | NFR-003 | T-011, T-014 |
 | NFR-004 | T-002a, T-014 |
 | NFR-005 | T-011 |
 | NFR-006 | T-015 |
-| NFR-007 | T-002a |
+| NFR-007 | T-002a, T-019 |
 | NFR-008 | T-012, T-015 |
-| NFR-009 | T-009 |
-| NFR-010 | T-011 |
+| NFR-009 | T-009, T-019 |
+| NFR-010 | T-011, T-020 |
 | NFR-011 | T-002b, T-015 |
 | NFR-012 | T-016 |
 | NFR-013 | T-017 |
@@ -322,3 +352,23 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
     - A permanent hostname (own domain, or sslip.io's rate-limit/PSL status confirmed).
   - Done when: restore drill documented; privacy notice live and linked; uptime, cap and billing
     alerts set; load check meets NFR-013.
+
+- [ ] T-010: Daily trading pack (deferred 2026-10-10 from Milestone 4, author decision)
+  - Estimate: 1 h
+  - Requirements: REQ-011, REQ-009 (AC-009.4 daily-pack case)
+  - Depends on: T-009
+  - Scope: lazy per-player pack per UTC day (injected clock + RNG), availability flag,
+    `GET /api/daily-pack`, pack screen with "request" starting the trade picker; allow
+    `daily_pack` as a trade source. Tables already exist (migration 001).
+  - Done when: tests for AC-011.1–011.5 and AC-009.4 (pack case) pass.
+
+- [ ] T-021: Procedurally unique cards (added 2026-10-10; the planned extra after the MVP)
+  - Estimate: ~2 h, after a spec change
+  - Requirements: none yet: write a REQ with the `spec` skill first (product.md § Later)
+  - Depends on: T-005, T-020; the MVP deployed
+  - Scope (draft): a random seed stored per instance at mint (additive migration) that picks
+    background palette, foil pattern and a per-card serial number ("Dog #0042"); rendered by
+    the card frame; nothing derived from the photo.
+  - Done when: defined by the new REQ's acceptance criteria.
+  - Not planned: the player's photo as card art (product.md § Later) stays an idea until
+    `ideate` and an ADR settle the G-3/REQ-004 conflict.
