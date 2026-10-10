@@ -6,6 +6,7 @@ import { secureHeaders } from "hono/secure-headers";
 import type { Db } from "./db/connection.js";
 import { errorJson } from "./errors.js";
 import type { StoredExpansion } from "./expansion/repository.js";
+import { type DailyCaps, DEFAULT_DAILY_CAPS } from "./game/daily-caps.js";
 import type { Identifier } from "./identify/client.js";
 import { InFlightLimiter } from "./inflight.js";
 import type { Logger } from "./logger.js";
@@ -58,6 +59,8 @@ export interface AppDeps {
   unknownFriendCodes?: SlidingWindowLimiter;
   /** Replaces the per-player capture limiter (tests use a fake clock). */
   capturesPerPlayer?: SlidingWindowLimiter;
+  /** Daily model-call caps (NFR-012); defaults to 3,000 overall and 30 per player. */
+  dailyCaps?: DailyCaps;
   /** Random source for rarity rolls (tests); `crypto.randomInt` otherwise. */
   random?: (max: number) => number;
 }
@@ -173,6 +176,7 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
         deps.capturesPerPlayer ??
         new SlidingWindowLimiter(CAPTURES_PER_PLAYER.limit, CAPTURES_PER_PLAYER.windowMs),
       ...(deps.random === undefined ? {} : { random: deps.random }),
+      dailyCaps: deps.dailyCaps ?? DEFAULT_DAILY_CAPS,
       inFlight: new InFlightLimiter(deps.maxInFlight ?? MAX_IDENTIFICATIONS_IN_FLIGHT),
       uploads: new InFlightLimiter(deps.maxUploads ?? MAX_UPLOADS_IN_FLIGHT),
       logger,

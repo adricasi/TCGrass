@@ -27,6 +27,7 @@ function config(overrides: Partial<ServerConfig> = {}): ServerConfig {
     logFilePath: undefined,
     databasePath: join(dir, "data", "tcgrass.db"),
     trustProxy: false,
+    dailyCaps: { global: 3000, perPlayer: 30 },
     ...overrides,
   };
 }
@@ -76,8 +77,8 @@ describe("migrate", () => {
 
   it("ADR-0004 applies the migrations once and is a no-op on the next start", () => {
     const db = openDatabase(":memory:");
-    expect(migrate(db)).toBe(1);
-    expect(migrate(db)).toBe(1);
+    expect(migrate(db)).toBe(2);
+    expect(migrate(db)).toBe(2);
     const tables = db
       .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
       .all()
@@ -85,6 +86,7 @@ describe("migrate", () => {
     expect(tables).toEqual([
       "card_instances",
       "catalogue_cards",
+      "daily_call_counts",
       "daily_pack_cards",
       "daily_packs",
       "expansions",

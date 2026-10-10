@@ -1,7 +1,7 @@
 # Product: TCGrass
 
 - Status: Approved (2026-10-08) <!-- Draft | In review | Approved -->
-- Last updated: 2026-10-10 (G-7 public production after the challenge, ADR 0006)
+- Last updated: 2026-10-10 (Q-7/Q-10 closed: DO serverless Gemma 4; earlier: G-7, ADR 0006)
 - Input: [idea brief](../discovery/idea-brief.md) (verdict Go, 2026-10-07) ·
   [research notes](../discovery/research-notes.md)
 
@@ -138,14 +138,10 @@ reconfirmed 2026-10-07).
 - [x] Q-4 (brief Q-6): Can a card in a `pending` offer be offered in another trade? → **No**; a card is locked while it is in a pending offer (2026-10-07).
 - [x] Q-5 (brief Q-7): Daily trading pack shared or per player? → **Per player**, fixed for the UTC day (2026-10-07).
 - [x] Q-6 (brief Q-8): Which tool/model generates the art (terms allow publication; ideally open)? → **Gemini app (Google), model "Gemini"** (2026-10-09). Google ToS (effective 2026-07-30): Google won't claim ownership of generated content; AI content must not be presented as human-made, so the art is labelled AI-generated (`license.images`, post).
-- [~] Q-7: Which inference path is used: DO serverless Gemma, vLLM on a GPU Droplet, or Ollama on a laptop? Decided by the hour-1 spike. → Model decided: `gemma4:e4b` (18/18 on the spike, 2026-10-09). Path still open: laptop Ollama misses NFR-004 (p95 14.8 s vs ≤ 8 s); decision deferred by the author (2026-10-09).
-  Production (2026-10-10): **DO serverless Gemma 4, pay per use, daily call cap** (ADR 0006,
-  Proposed until Q-10 passes).
+- [x] Q-7: Which inference path is used: DO serverless Gemma, vLLM on a GPU Droplet, or Ollama on a laptop? → **DO serverless `gemma-4-31B-it`** for the field test and production (2026-10-10, ADR 0006 accepted). Earlier: `gemma4:e4b` on laptop Ollama scored 18/18 but p95 14.8 s.
 - [x] Q-8: Which hostname is used for HTTPS? → free `<droplet-ip>.sslip.io` name (2026-10-07).
 - [~] Q-9: DO serverless is **allowed** (decided 2026-10-07) and is the production path (ADR 0006, 2026-10-10); still open: cite DigitalOcean's data-use, retention and training-use terms for prompts/images in the privacy notice, the post and design.md. Part of accepting ADR 0006.
-- [ ] Q-10 (added 2026-10-10): Does DO serverless Gemma 4 accept images and pass the spike
-  (≥ 80 % correct, 100 % parseable, capture p95 ≤ 8 s)? Decides whether ADR 0006 is accepted
-  or its fallback order applies.
+- [x] Q-10 (added 2026-10-10): Does DO serverless Gemma 4 accept images and pass the spike? → **Yes, with latency accepted** (2026-10-10): DO serverless `gemma-4-31B-it`, 19 spike photos (2026-10-10): 89 % correct (17/19; 12/13 catalogue, 3/3 none, 2/3 screens — the miss became `none`, nothing minted), 100 % parseable, 1 timeout, latency p50 9.1 s / p95 26.4 s; flavor lines clean. The author accepted the latency; NFR-004 revised.
 - [ ] Q-11 (added 2026-10-10): Privacy notice and terms for the public product: photos sent to
   the inference provider (DigitalOcean), data kept while the service runs, no account recovery
   (A-2), who the data controller is and a contact address, how a player erases their data
@@ -158,7 +154,9 @@ reconfirmed 2026-10-07).
 - A-2: One device = one player. Clearing browser data or losing the phone loses access to that player's cards; acceptable for a hackathon. Re-affirmed 2026-10-10 for the public product (G-7): stated in the privacy notice (Q-11), revisited if players ask for recovery.
 - A-3: Exactly one expansion is active in the deployed game.
 - A-6: Friendship needs a request + accept (confirmed 2026-10-07); removing friends, blocking and cancelling a sent request are not supported.
-- A-7: Server-side capture p95 ≤ 8 s is achievable with the chosen inference path; revisit after the spike.
+- ~~A-7: Server-side capture p95 ≤ 8 s is achievable with the chosen inference path; revisit after the spike.~~
+  Superseded 2026-10-10: DO serverless measured p50 9.1 s / p95 26.4 s; the author accepted it
+  and NFR-004 was revised to p50 ≤ 10 s, p95 ≤ 30 s.
 - A-8: Confirmed 2026-10-07: a locked instance is shown as unavailable and cannot be requested by others until its offer resolves.
 - A-9: Confirmed 2026-10-07: the field test runs in Europe (CEST); the daily pack rolls over at 00:00 UTC = 02:00 CEST, outside the test window (Sun 10:00–12:30 CEST).
 - A-10: Ollama fallback is reached via an SSH reverse tunnel to the Droplet (end-to-end encrypted, no third party), not ngrok/Cloudflare.

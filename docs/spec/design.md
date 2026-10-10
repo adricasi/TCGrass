@@ -1,7 +1,7 @@
 # Design: TCGrass
 
 - Status: Approved (2026-10-08) <!-- Draft | In review | Approved -->
-- Last updated: 2026-10-10 (production inference + daily call cap, ADR 0006)
+- Last updated: 2026-10-10 (DO check result; ADR 0006 accepted)
 - Implements: requirements.md (REQ-*, NFR-*)
 
 ## Overview
@@ -40,11 +40,10 @@ flowchart LR
 | Inference access | One OpenAI-compatible client · per-provider adapters | One client, env-configured | [0003](../adr/0003-call-gemma-through-an-openai-compatible-endpoint.md) |
 | Datastore | SQLite (better-sqlite3) · Managed Postgres · `node:sqlite` | SQLite + better-sqlite3 | [0004](../adr/0004-store-game-state-in-sqlite.md) |
 | Stack / layout | Hono + Preact · Fastify + React · Express + vanilla; workspaces vs one package | Hono + zod, Vite + Preact, one package | [0005](../adr/0005-use-hono-and-preact-in-one-typescript-package.md) |
-| Production inference (G-7) | DO serverless pay-per-use · always-on GPU Droplet · laptop Ollama · other provider | DO serverless Gemma 4 + daily call cap (Proposed until Q-10) | [0006](../adr/0006-run-production-inference-on-do-serverless-with-a-daily-cap.md) |
+| Production inference (G-7) | DO serverless pay-per-use · always-on GPU Droplet · laptop Ollama · other provider | DO serverless Gemma 4 + daily call caps (accepted 2026-10-10) | [0006](../adr/0006-run-production-inference-on-do-serverless-with-a-daily-cap.md) |
 
 The inference **path** (DO serverless vs vLLM on GPU Droplet vs Ollama) needs no design change.
-Production uses DO serverless Gemma 4 with daily call caps ([ADR 0006](../adr/0006-run-production-inference-on-do-serverless-with-a-daily-cap.md),
-Proposed until the Q-10 check passes).
+Production and the field test use DO serverless Gemma 4 with daily call caps ([ADR 0006](../adr/0006-run-production-inference-on-do-serverless-with-a-daily-cap.md), accepted 2026-10-10).
 
 **Spike result (T-001, 2026-10-09).** Validated path: **Ollama 0.35 on the author's laptop,
 model `gemma4:e4b`**. 18 labelled photos (12 catalogue, 3 non-catalogue, 3 screen/print):
@@ -53,7 +52,11 @@ no flavor line quoting photo text or describing people/places. Latency p50 6.0 s
 which misses NFR-004 (p95 ≤ 8 s) on that hardware. An earlier run with the first prompt gave
 0/3 on non-catalogue photos (forced matches at ≥ 0.90 confidence); the prompt now states that
 only the main subject counts and that look-alike kinds are "none". The photos are AI-generated,
-not field photos, so accuracy may be optimistic. Production path: ADR 0006 (Proposed until Q-10).
+not field photos, so accuracy may be optimistic.
+
+**DO check (T-018, 2026-10-10):** DO serverless `gemma-4-31B-it`, 19 spike photos (2026-10-10): 89 % correct (17/19; 12/13 catalogue, 3/3 none, 2/3 screens — the miss became `none`, nothing minted), 100 % parseable, 1 timeout, latency p50 9.1 s / p95 26.4 s; flavor lines clean. Chosen for the field test and production
+(ADR 0006, accepted; NFR-004 revised to p50 ≤ 10 s, p95 ≤ 30 s). The PWA tells the player a
+capture can take a moment.
 
 ## Components
 | Component | Responsibility | Tech / service | Requirements |
@@ -189,8 +192,9 @@ naming any missing or invalid key without printing values (AC-012.2), or if
 - Rate limits (in memory, single process): captures 10/60 s per player (AC-003.11); at most 5
   identification calls in flight overall (AC-003.12). Daily caps (NFR-012) are **not** in
   memory: `INFERENCE_DAILY_CALL_LIMIT` model calls per UTC day overall (AC-003.13) and
-  `CAPTURES_PER_PLAYER_PER_DAY` per player (AC-003.14) are counted in the DB with one atomic
-  `UPDATE … SET n = n + 1 WHERE day = ? AND n < limit`, so concurrent captures can't overshoot; unknown friend codes 10/10 min per
+  `CAPTURES_PER_PLAYER_PER_DAY` per player (AC-003.14) are counted in the DB: both counts are
+  read and incremented inside one IMMEDIATE transaction, so concurrent captures can't
+  overshoot. A cap of `0` pauses captures (kill switch); unknown friend codes 10/10 min per
   player (AC-008.4); player creation 10/h per client IP (AC-002.8).
 - Threats considered:
   | Threat | Mitigation |
@@ -280,9 +284,7 @@ Estimates, to be checked against DigitalOcean's pricing page when the resources 
 | D-6 | Card lock enforced by a partial unique index on pending offers | — (Q-4) |
 
 ## Open questions (design)
-- Q-7 (product.md): production inference path → ADR 0006 (DO serverless + daily caps), Proposed
-  until Q-10 (DO Gemma 4 vision + spike) passes. The spike validated Ollama + `gemma4:e4b` locally
-  (2026-10-09).
+- ~~Q-7 (product.md)~~ resolved 2026-10-10: DO serverless `gemma-4-31B-it` (ADR 0006, accepted).
 - ~~Q-8~~ resolved 2026-10-07: Caddy uses `<reserved-ip>.sslip.io` as `PUBLIC_HOSTNAME`
   (no domain cost; the Reserved IP keeps the name stable).
 - Q-9 (product.md): DO serverless data terms, if that path is chosen.

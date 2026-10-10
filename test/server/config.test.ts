@@ -100,8 +100,19 @@ describe("loadServerConfig", () => {
       logFilePath: undefined,
       databasePath: ".dev/test.db",
       trustProxy: false,
+      dailyCaps: { global: 3000, perPlayer: 30 },
     });
     expect(config.inference.model).toBe("gemma-3-12b-it");
+  });
+
+  it("NFR-012 reads the daily caps", () => {
+    expect(
+      loadServerConfig({
+        ...serverEnv,
+        INFERENCE_DAILY_CALL_LIMIT: "500",
+        CAPTURES_PER_PLAYER_PER_DAY: "12",
+      }).dailyCaps,
+    ).toEqual({ global: 500, perPlayer: 12 });
   });
 
   it("NFR-001 trusts X-Forwarded-For only when TRUST_PROXY is exactly true", () => {
@@ -130,6 +141,9 @@ describe("loadServerConfig", () => {
     ["LOG_LEVEL", { LOG_LEVEL: "verbose" }],
     ["DATABASE_PATH", { DATABASE_PATH: "" }],
     ["TRUST_PROXY", { TRUST_PROXY: "yes" }],
+    ["INFERENCE_DAILY_CALL_LIMIT", { INFERENCE_DAILY_CALL_LIMIT: "-1" }],
+    ["INFERENCE_DAILY_CALL_LIMIT", { INFERENCE_DAILY_CALL_LIMIT: "300000" }],
+    ["CAPTURES_PER_PLAYER_PER_DAY", { CAPTURES_PER_PLAYER_PER_DAY: "many" }],
   ])("AC-012.2 refuses to start and names %s when it is missing or malformed", (key, override) => {
     expect(() => loadServerConfig({ ...serverEnv, ...override })).toThrow(key);
   });

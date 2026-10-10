@@ -1,6 +1,6 @@
 # 0006. Run production inference on DigitalOcean serverless Gemma, pay per use, with daily call caps
 
-- Status: Proposed (becomes Accepted once the DO check in "Follow-ups" passes)
+- Status: Accepted (2026-10-10, after the DO check; latency accepted by the author, NFR-004 revised)
 - Date: 2026-10-10
 - Deciders: adricasi
 
@@ -36,6 +36,8 @@ Monthly cost, always on (the app Droplet + Volume, about $7–13/month, come on 
 | 100,000 | ≈ $30 | ≈ $555 | — |
 
 The GPU Droplet only breaks even above roughly 1.8 million captures a month.
+
+**DO check result (2026-10-10, T-018):** DO serverless `gemma-4-31B-it`, 19 spike photos (2026-10-10): 89 % correct (17/19; 12/13 catalogue, 3/3 none, 2/3 screens — the miss became `none`, nothing minted), 100 % parseable, 1 timeout, latency p50 9.1 s / p95 26.4 s; flavor lines clean. Images are accepted and quality passes; p95 misses the old 8 s target, which the author accepted (typical wait ≈ 9 s), so NFR-004 became p50 ≤ 10 s, p95 ≤ 30 s.
 
 ## Options considered
 1. **DO serverless Gemma 4, pay per use.** Pros: no idle cost, no GPU to operate or destroy,

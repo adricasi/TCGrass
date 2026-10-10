@@ -1,7 +1,7 @@
 # Tasks: TCGrass
 
 - Status: Approved (2026-10-08) <!-- Draft | In review | Approved -->
-- Last updated: 2026-10-10 (G-7 production: T-016, T-017, T-018 added; ADR 0006)
+- Last updated: 2026-10-10 (T-018 done: DO serverless chosen; earlier: T-016–T-018 added)
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
 Order = implementation order. Each task is a small vertical slice (≤ ~1 day), references
@@ -80,9 +80,9 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
     sslip.io PSL question, put `.env` on it, `docker compose up -d --build`.
   - Done when: CI green; on a real phone `https://<reserved-ip>.sslip.io` shows the camera and
     a photo of an oak returns `oak`; `curl -I http://…` returns 301/308 to https.
-  - Note (2026-10-10, G-7): the field-test deploy (Sat 18:00) uses whichever endpoint passes:
-    DO serverless if Q-10 passes in time (T-018), otherwise a GPU Droplet or the laptop tunnel
-    as validated in T-001. **Any deploy that uses pay-per-use inference requires T-016 first.**
+  - Note (2026-10-10, G-7): the field test and production use DO serverless `gemma-4-31B-it`
+    (T-018 passed, ADR 0006 accepted), with a production model access key restricted to the
+    Droplet's VPC and the VPC-local DNS resolver enabled. **T-016 (daily caps) comes first.**
 
 ## Milestone 2: Collect (T-003 Fri evening; rest Sat 10-10 morning)
 - [x] T-003: Database + expansion seed command
@@ -124,7 +124,7 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
   - Done when: tests for AC-003.5–003.7, 003.11, AC-004.1–004.3, AC-005.1–005.3,
     AC-006.1–006.5 pass; a photo on the phone produces a revealed card stored in the DB.
 
-- [ ] T-016: Daily model-call caps (added 2026-10-10, ADR 0006)
+- [x] T-016: Daily model-call caps (added 2026-10-10, ADR 0006)
   - Estimate: 0.75 h
   - Requirements: AC-003.13, AC-003.14, NFR-012
   - Depends on: T-005
@@ -275,7 +275,7 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
 | NFR-015 | T-017 |
 
 ## After the challenge (G-7, added 2026-10-10)
-- [ ] T-018: 👤 DO serverless check (added 2026-10-10, accepts ADR 0006)
+- [x] T-018: 👤 DO serverless check (added 2026-10-10, accepts ADR 0006)
   - Estimate: ~10 min of the human's time
   - Requirements: Q-10, Q-9
   - Depends on: T-001
@@ -284,6 +284,8 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
     and training-use terms for prompts and images.
   - Done when: result recorded in design.md (§ Options considered) and product.md Q-7/Q-10;
     ADR 0006 set to Accepted (pass) or its fallback applied (fail).
+  - Result (2026-10-10): done. `gemma-4-31B-it`: 19 spike photos (2026-10-10): 89 % correct (17/19; 12/13 catalogue, 3/3 none, 2/3 screens — the miss became `none`, nothing minted), 100 % parseable, 1 timeout, latency p50 9.1 s / p95 26.4 s; flavor lines clean. Latency accepted
+    by the author; NFR-004 revised; ADR 0006 accepted. Delete the test key when no longer needed.
 
 - [ ] T-017: Production readiness before the public launch
   - Estimate: ~3 h (agent + human)

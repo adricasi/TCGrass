@@ -286,4 +286,32 @@ describe("createIdentifier", () => {
       server.close();
     }
   });
+
+  it("NFR-012 returns the token usage the endpoint reports", async () => {
+    const { identify } = identifierFor(() =>
+      Response.json({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                card_id: "oak",
+                confidence: 0.9,
+                is_photo_of_screen: false,
+              }),
+            },
+          },
+        ],
+        usage: { prompt_tokens: 1500, completion_tokens: 80 },
+      }),
+    );
+    await expect(identify(photo)).resolves.toMatchObject({
+      outcome: "card",
+      usage: { promptTokens: 1500, completionTokens: 80 },
+    });
+  });
+
+  it("NFR-012 leaves usage out when the endpoint doesn't report it", async () => {
+    const { identify } = identifierFor(() => answer({}));
+    expect(await identify(photo)).not.toHaveProperty("usage");
+  });
 });
