@@ -89,7 +89,15 @@ export function seededDb(fixture = "fixture-a"): { db: Db; expansion: StoredExpa
 }
 
 export type TestAppOptions = Partial<
-  Pick<AppDeps, "maxInFlight" | "maxUploads" | "capturesPerPlayer" | "random" | "playerCreations">
+  Pick<
+    AppDeps,
+    | "maxInFlight"
+    | "maxUploads"
+    | "capturesPerPlayer"
+    | "random"
+    | "playerCreations"
+    | "unknownFriendCodes"
+  >
 >;
 
 /** Creates a player and returns the header that authenticates as them. */

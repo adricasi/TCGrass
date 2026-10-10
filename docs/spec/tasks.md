@@ -130,7 +130,7 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
     3 captures.
 
 ## Milestone 3: Social (Sat 10-10 afternoon)
-- [ ] T-007: Friend requests + friends' binders
+- [~] T-007: Friend requests + friends' binders
   - Estimate: 1 h
   - Requirements: REQ-008
   - Depends on: T-006

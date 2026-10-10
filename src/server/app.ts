@@ -14,6 +14,8 @@ import type { Player } from "./players/service.js";
 import { SlidingWindowLimiter } from "./rate-limit.js";
 import { binderRoutes } from "./routes/binder.js";
 import { cardRoutes, SVG_CSP } from "./routes/cards.js";
+import { friendRequestRoutes, friendRoutes, UNKNOWN_FRIEND_CODES } from "./routes/friends.js";
+import { inboxRoutes } from "./routes/inbox.js";
 import { captureRoutes } from "./routes/captures.js";
 import { expansionRoutes } from "./routes/expansion.js";
 import { meRoutes, playerRoutes } from "./routes/players.js";
@@ -51,6 +53,8 @@ export interface AppDeps {
   playerCreations?: SlidingWindowLimiter;
   /** Read the client IP from X-Forwarded-For (only behind Caddy, TRUST_PROXY=true). */
   trustProxy?: boolean;
+  /** Replaces the unknown-friend-code limiter (tests use a fake clock). */
+  unknownFriendCodes?: SlidingWindowLimiter;
   /** Replaces the per-player capture limiter (tests use a fake clock). */
   capturesPerPlayer?: SlidingWindowLimiter;
   /** Random source for rarity rolls (tests); `crypto.randomInt` otherwise. */
@@ -145,6 +149,16 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
   );
   app.route("/api/me", meRoutes());
   app.route("/api/binder", binderRoutes(deps.db, deps.expansion));
+  const friendDeps = {
+    db: deps.db,
+    expansion: deps.expansion,
+    unknownCodes:
+      deps.unknownFriendCodes ??
+      new SlidingWindowLimiter(UNKNOWN_FRIEND_CODES.limit, UNKNOWN_FRIEND_CODES.windowMs),
+  };
+  app.route("/api/friend-requests", friendRequestRoutes(friendDeps));
+  app.route("/api/friends", friendRoutes(friendDeps));
+  app.route("/api/inbox", inboxRoutes(deps.db));
   app.route("/cards", cardRoutes(deps.db, logger));
 
   app.route(

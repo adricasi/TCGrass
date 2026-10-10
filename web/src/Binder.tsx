@@ -9,9 +9,11 @@ import { CardDetail } from "./CardDetail.js";
 export function Binder({
   secret,
   onUnauthenticated,
+  onShowOdds,
 }: {
   secret: string;
   onUnauthenticated: () => void;
+  onShowOdds: () => void;
 }) {
   const [binder, setBinder] = useState<BinderResponse | null>(null);
   const [failed, setFailed] = useState(false);
@@ -52,6 +54,9 @@ export function Binder({
       <h2>
         Binder <span class="progress">{progressLabel(binder)}</span>
       </h2>
+      <button type="button" class="link" onClick={onShowOdds}>
+        Rarity odds
+      </button>
       <ul class="binder-grid">
         {binder.cards.map((card) => (
           <li key={card.id}>

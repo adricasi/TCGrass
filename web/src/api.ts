@@ -4,6 +4,16 @@ import { type BinderResponse, binderResponseSchema } from "../../src/shared/sche
 import { type CaptureResponse, captureResponseSchema } from "../../src/shared/schemas/captures.js";
 import { errorResponseSchema } from "../../src/shared/schemas/errors.js";
 import {
+  type FriendBinderResponse,
+  friendBinderResponseSchema,
+  type FriendRequestResult,
+  friendRequestResultSchema,
+  type FriendsResponse,
+  friendsResponseSchema,
+  type InboxResponse,
+  inboxResponseSchema,
+} from "../../src/shared/schemas/friends.js";
+import {
   type ExpansionResponse,
   expansionResponseSchema,
 } from "../../src/shared/schemas/expansion.js";
@@ -84,4 +94,49 @@ export function getBinder(secret: string): Promise<BinderResponse> {
 /** `GET /api/expansion` (public): cards and odds of the active expansion. */
 export function getExpansion(): Promise<ExpansionResponse> {
   return request("/api/expansion", {}, expansionResponseSchema);
+}
+
+/** `POST /api/friend-requests` (AC-008.2). */
+export function sendFriendRequest(
+  secret: string,
+  friendCode: string,
+): Promise<FriendRequestResult> {
+  return request(
+    "/api/friend-requests",
+    {
+      method: "POST",
+      headers: { ...authHeader(secret), "content-type": "application/json" },
+      body: JSON.stringify({ friendCode }),
+    },
+    friendRequestResultSchema,
+  );
+}
+
+/** `POST /api/friend-requests/:id/accept|decline` (AC-008.7). */
+export function answerFriendRequest(
+  secret: string,
+  requestId: number,
+  accept: boolean,
+): Promise<FriendRequestResult> {
+  return request(
+    `/api/friend-requests/${requestId}/${accept ? "accept" : "decline"}`,
+    { method: "POST", headers: authHeader(secret) },
+    friendRequestResultSchema,
+  );
+}
+
+export function getFriends(secret: string): Promise<FriendsResponse> {
+  return request("/api/friends", { headers: authHeader(secret) }, friendsResponseSchema);
+}
+
+export function getFriendBinder(secret: string, friendCode: string): Promise<FriendBinderResponse> {
+  return request(
+    `/api/friends/${encodeURIComponent(friendCode)}/binder`,
+    { headers: authHeader(secret) },
+    friendBinderResponseSchema,
+  );
+}
+
+export function getInbox(secret: string): Promise<InboxResponse> {
+  return request("/api/inbox", { headers: authHeader(secret) }, inboxResponseSchema);
 }
