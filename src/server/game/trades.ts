@@ -28,6 +28,9 @@ function findInstance(db: Db, id: number): InstanceRow | undefined {
     .get(id);
 }
 
+/** Pending offers one sender may have with the same recipient (AC-009.8). */
+export const MAX_PENDING_OFFERS_PER_RECIPIENT = 10;
+
 /** Locked = the offered card of a pending offer (design § Data model). */
 export function isLocked(db: Db, instanceId: number): boolean {
   return (
@@ -76,6 +79,19 @@ export function createOffer(
       }
       if (isLocked(db, requested.id)) {
         throw new TradeError(409, "card_locked", "That card is in one of their pending offers.");
+      }
+      const pendingToThem = db
+        .prepare<[number, number], { n: number }>(
+          "SELECT COUNT(*) AS n FROM trade_offers WHERE from_player_id = ? AND to_player_id = ? AND status = 'pending'",
+        )
+        .get(senderId, requested.owner_id);
+      if ((pendingToThem?.n ?? 0) >= MAX_PENDING_OFFERS_PER_RECIPIENT) {
+        throw new TradeError(
+          409,
+          "too_many_offers",
+          `You already have ${MAX_PENDING_OFFERS_PER_RECIPIENT} offers waiting with this friend. ` +
+            "Wait for an answer or cancel one.",
+        );
       }
       try {
         const result = db

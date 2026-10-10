@@ -60,9 +60,47 @@ export function areFriends(db: Db, a: number, b: number): boolean {
   );
 }
 
+/** After a decline: wait this long before re-sending to the same player (AC-008.10). */
+export const RESEND_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+/** Declines from one recipient after which the sender can't ask again: first + 3 re-sends. */
+export const MAX_DECLINED_REQUESTS = 4;
+
+/**
+ * Anti-harassment rule (AC-008.10): only the sender→recipient direction counts, so the
+ * recipient can still send a request the other way.
+ */
+function checkDeclineLimits(db: Db, fromId: number, toId: number, now: Date): void {
+  const declined = db
+    .prepare<[number, number], { count: number; last: string | null }>(
+      `SELECT COUNT(*) AS count, MAX(resolved_at) AS last FROM friend_requests
+        WHERE from_player_id = ? AND to_player_id = ? AND status = 'declined'`,
+    )
+    .get(fromId, toId);
+  if (declined === undefined || declined.count === 0) {
+    return;
+  }
+  if (declined.count >= MAX_DECLINED_REQUESTS) {
+    throw new FriendError(
+      409,
+      "request_declined",
+      "This player declined your requests, so you can't send them more.",
+    );
+  }
+  const waitMs =
+    (declined.last === null ? 0 : Date.parse(declined.last)) + RESEND_COOLDOWN_MS - now.getTime();
+  if (waitMs > 0) {
+    const hours = Math.ceil(waitMs / (60 * 60 * 1000));
+    throw new FriendError(
+      409,
+      "request_declined",
+      `This player declined your last request. You can ask again in ${hours} h.`,
+    );
+  }
+}
+
 /**
  * Sends a friend request to the player with `friendCode` (already normalised), checking
- * every AC-008.3 rule inside one IMMEDIATE transaction.
+ * every AC-008.3 and AC-008.10 rule inside one IMMEDIATE transaction.
  */
 export function sendFriendRequest(
   db: Db,
@@ -95,6 +133,7 @@ export function sendFriendRequest(
           "A friend request between you is already waiting for an answer.",
         );
       }
+      checkDeclineLimits(db, fromId, target.id, now);
       const result = db
         .prepare(
           "INSERT INTO friend_requests (from_player_id, to_player_id, status, created_at) VALUES (?, ?, 'pending', ?)",

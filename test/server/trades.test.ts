@@ -345,4 +345,25 @@ describe("cancelling and listing", () => {
     insert.run(w.ada.id, w.bob.id, mine, w.mint(w.bob, "fox"));
     expect(() => insert.run(w.ada.id, w.bob.id, mine, w.mint(w.bob, "rose"))).toThrow(/UNIQUE/);
   });
+
+  it("AC-009.8 refuses an 11th pending offer to the same friend until one leaves pending", async () => {
+    const w = world();
+    const ids: number[] = [];
+    for (let index = 0; index < 10; index += 1) {
+      const response = await offer(w, w.ada, w.mint(w.ada, "oak"), w.mint(w.bob, "fox"));
+      expect(response.status).toBe(201);
+      ids.push(sentOfferSchema.parse(await response.json()).id);
+    }
+    const eleventh = await offer(w, w.ada, w.mint(w.ada, "oak"), w.mint(w.bob, "fox"));
+    expect(eleventh.status).toBe(409);
+    expect((await errorOf(eleventh)).code).toBe("too_many_offers");
+    expect(offerCount(w)).toBe(10);
+
+    // Another friend is not affected.
+    befriend(w.t, w.ada, w.cy);
+    expect((await offer(w, w.ada, w.mint(w.ada, "oak"), w.mint(w.cy, "fox"))).status).toBe(201);
+    // Cancelling one frees a slot.
+    await cancel(w, w.ada, ids[0] ?? 0);
+    expect((await offer(w, w.ada, w.mint(w.ada, "oak"), w.mint(w.bob, "fox"))).status).toBe(201);
+  });
 });
