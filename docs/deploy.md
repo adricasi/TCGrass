@@ -54,6 +54,8 @@ git clone https://github.com/adricasi/TCGrass.git /opt/tcgrass
 # The API runs as uid 1000 and needs a writable data directory on the Volume.
 sudo mkdir -p /mnt/<volume-name>/tcgrass
 sudo chown 1000:1000 /mnt/<volume-name>/tcgrass
+# The DB and its backups hold the players' secret hashes: readable by the API user only.
+sudo chmod 700 /mnt/<volume-name>/tcgrass
 ```
 
 Docker-published ports bypass UFW, so the DO Cloud Firewall is what protects the box.
@@ -149,8 +151,25 @@ No redeploys from Sat 2026-10-10 18:00 CEST until the field test ends (NFR-003).
   a config-only restart like this one is allowed until Sun 09:30 CEST (product.md Q-12).
 - **Rollback:** `git checkout <previous-tag> && docker compose up -d --build`. Migrations are
   additive during the challenge week, so the DB stays compatible.
-- **Backups:** the daily SQLite backup arrives with T-011. Until then, take one by hand with
-  `docker compose stop api`, a copy of `${DATA_DIR}/tcgrass.db*`, then `docker compose start api`.
+- **Backups (NFR-003):** the API writes one online backup per UTC day to
+  `${DATA_DIR}/backups/tcgrass-YYYY-MM-DD.db` (at startup if today's is missing, then checked
+  hourly) and keeps the newest 7. Each run logs `backup_done`, or `backup_failed` at error level.
+  They live on the same Volume as the DB; the off-box copy is T-017.
+- **Restore** (everything after that backup is lost):
+  ```bash
+  B=${DATA_DIR}/backups/tcgrass-YYYY-MM-DD.db
+  sudo sqlite3 "$B" 'PRAGMA integrity_check'   # must print "ok"
+  docker compose stop api
+  sudo install -d -o 1000 -g 1000 -m 700 ${DATA_DIR}/restore-$(date +%F)
+  sudo mv ${DATA_DIR}/tcgrass.db* ${DATA_DIR}/restore-$(date +%F)/   # DB, -wal and -shm
+  sudo install -o 1000 -g 1000 -m 600 "$B" ${DATA_DIR}/tcgrass.db
+  docker compose start api
+  ```
+  (`sqlite3` may need `sudo apt install sqlite3` on the Droplet.)
+- **Load check:** `npm run load -- --parallel 6` (laptop, stub model, no inference cost) expects
+  5 × 200 and 1 × 503 `busy` (NFR-005, AC-003.12).
+- **Before the field test:** run [field-test-checklist.md](field-test-checklist.md) on both
+  phones.
 
 ### Service worker kill switch
 The PWA's `sw.js` caches only the app shell and `/assets`, and it's served `no-cache`. Phones
