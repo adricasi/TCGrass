@@ -15,6 +15,8 @@ import {
 } from "../../src/shared/schemas/friends.js";
 import {
   type CreateTradeRequest,
+  type OfferAnswer,
+  offerAnswerSchema,
   type SentOffer,
   sentOfferSchema,
   type SentOffersResponse,
@@ -173,4 +175,17 @@ export function cancelTradeOffer(secret: string, offerId: number): Promise<SentO
 /** `GET /api/trades/sent` (AC-009.6). */
 export function getSentOffers(secret: string): Promise<SentOffersResponse> {
   return request("/api/trades/sent", { headers: authHeader(secret) }, sentOffersResponseSchema);
+}
+
+/** `POST /api/trades/:id/accept|decline` (AC-010.3, AC-010.6). */
+export function answerTradeOffer(
+  secret: string,
+  offerId: number,
+  accept: boolean,
+): Promise<OfferAnswer> {
+  return request(
+    `/api/trades/${offerId}/${accept ? "accept" : "decline"}`,
+    { method: "POST", headers: authHeader(secret) },
+    offerAnswerSchema,
+  );
 }

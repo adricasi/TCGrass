@@ -153,7 +153,7 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
     limit) and AC-009.8 (10 pending offers per pair) added to the spec and built on this branch.
     T-009: add a test that a *declined* offer also frees an AC-009.8 slot.
 
-- [ ] T-009: Inbox: accept/decline with atomic swap + badge
+- [~] T-009: Inbox: accept/decline with atomic swap + badge
   - Estimate: 1 h
   - Requirements: REQ-010, NFR-009
   - Depends on: T-008

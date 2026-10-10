@@ -8,9 +8,12 @@ import { tradeStatusLabel } from "./trade-view.js";
 /** Offers I sent, with both cards, the friend and the status; pending ones can be cancelled (AC-009.5, AC-009.6). */
 export function SentOffers({
   secret,
+  version,
   onUnauthenticated,
 }: {
   secret: string;
+  /** Reloads when this changes (inbox poll or an answer), so statuses stay current. */
+  version: number;
   onUnauthenticated: () => void;
 }) {
   const [offers, setOffers] = useState<SentOffer[] | null>(null);
@@ -35,7 +38,7 @@ export function SentOffers({
       });
   }
 
-  useEffect(load, [secret]);
+  useEffect(load, [secret, version]);
 
   async function cancel(offerId: number): Promise<void> {
     setBusy(true);

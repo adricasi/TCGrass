@@ -456,3 +456,9 @@ main {
 .offer-failed {
   opacity: 0.6;
 }
+
+.offer-cards {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}

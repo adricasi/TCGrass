@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { binderResponseSchema } from "./binder.js";
 import { friendCodeSchema, publicPlayerSchema } from "./players.js";
+import { incomingOfferSchema } from "./trades.js";
 
 /** What a player types: trimmed and upper-cased before matching (AC-008.2). */
 export function normalizeFriendCode(input: string): string {
@@ -50,11 +51,11 @@ export const friendBinderResponseSchema = z
   .strict();
 export type FriendBinderResponse = z.infer<typeof friendBinderResponseSchema>;
 
-/** Response of `GET /api/inbox`. Trade offers are added by T-008 (REQ-010). */
+/** Response of `GET /api/inbox`: what waits for the player's answer (AC-008.6, AC-010.2). */
 export const inboxResponseSchema = z
   .object({
     friendRequests: z.array(incomingFriendRequestSchema),
-    tradeOffers: z.array(z.never()),
+    tradeOffers: z.array(incomingOfferSchema),
     counts: z
       .object({
         friendRequests: z.number().int().nonnegative(),

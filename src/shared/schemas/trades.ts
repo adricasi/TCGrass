@@ -45,3 +45,23 @@ export type SentOffer = z.infer<typeof sentOfferSchema>;
 
 export const sentOffersResponseSchema = z.object({ offers: z.array(sentOfferSchema) }).strict();
 export type SentOffersResponse = z.infer<typeof sentOffersResponseSchema>;
+
+/** A received pending offer, as listed in the inbox (AC-010.2). */
+export const incomingOfferSchema = z
+  .object({
+    id: z.number().int().positive(),
+    createdAt: z.string(),
+    from: publicPlayerSchema,
+    /** The sender's card, which the recipient would receive. */
+    offered: tradeCardSchema,
+    /** The recipient's card, which they would give. */
+    requested: tradeCardSchema,
+  })
+  .strict();
+export type IncomingOffer = z.infer<typeof incomingOfferSchema>;
+
+/** Response of accept/decline. */
+export const offerAnswerSchema = z
+  .object({ id: z.number().int().positive(), status: z.enum(["accepted", "declined"]) })
+  .strict();
+export type OfferAnswer = z.infer<typeof offerAnswerSchema>;
