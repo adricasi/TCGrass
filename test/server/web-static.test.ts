@@ -9,6 +9,8 @@ import { fakeIdentifier, testApp } from "./helpers.js";
 /** A stand-in for the Vite build output (`dist/web`). */
 const webRoot = mkdtempSync(join(tmpdir(), "tcgrass-web-"));
 writeFileSync(join(webRoot, "index.html"), "<!doctype html><title>TCGrass</title>");
+writeFileSync(join(webRoot, "manifest.webmanifest"), "{}");
+writeFileSync(join(webRoot, "sw.js"), "// worker");
 mkdirSync(join(webRoot, "assets"));
 writeFileSync(join(webRoot, "assets", "index-abc123.js"), "console.log('app');");
 mkdirSync(join(webRoot, "api"));
@@ -39,6 +41,17 @@ describe("serving the built PWA", () => {
     expect(response.status).toBe(200);
     expect(response.headers.get("content-type")).toMatch(/javascript/);
     expect(response.headers.get("cache-control")).toBe("public, max-age=31536000, immutable");
+  });
+
+  it("AC-013.1 serves the manifest and the service worker, always revalidated", async () => {
+    const manifest = await app.request("/manifest.webmanifest");
+    expect(manifest.status).toBe(200);
+    expect(manifest.headers.get("content-type")).toBe("application/manifest+json");
+    const worker = await app.request("/sw.js");
+    expect(worker.status).toBe(200);
+    expect(worker.headers.get("content-type")).toMatch(/javascript/);
+    // A stale worker would keep serving an old shell after a redeploy.
+    expect(worker.headers.get("cache-control")).toBe("no-cache");
   });
 
   it("NFR-001 never serves files for /api or /cards paths, even if the build had them", async () => {

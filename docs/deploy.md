@@ -147,6 +147,28 @@ No redeploys from Sat 2026-10-10 18:00 CEST until the field test ends (NFR-003).
 - **Backups:** the daily SQLite backup arrives with T-011. Until then, take one by hand with
   `docker compose stop api`, a copy of `${DATA_DIR}/tcgrass.db*`, then `docker compose start api`.
 
+### Service worker kill switch
+The PWA's `sw.js` caches only the app shell and `/assets`, and it's served `no-cache`. Phones
+pick up a fixed `sw.js` on their next visit. If a deployed worker ever breaks the app,
+deleting `sw.js` is **not** enough: a 404 leaves the old worker installed. Replace
+`web/public/sw.js` with this, then redeploy:
+
+```js
+self.addEventListener("install", () => self.skipWaiting());
+self.addEventListener("activate", (event) => {
+  event.waitUntil(
+    caches
+      .keys()
+      .then((keys) => Promise.all(keys.map((key) => caches.delete(key))))
+      .then(() => self.registration.unregister())
+      .then(() => self.clients.matchAll({ type: "window" }))
+      .then((clients) => clients.forEach((client) => client.navigate(client.url))),
+  );
+});
+```
+
+It removes every cache and unregisters itself. Player secrets in localStorage are kept.
+
 ## Local run (NFR-011)
 To run against Ollama on the laptop:
 1. In `.env`, set `INFERENCE_BASE_URL=http://host.docker.internal:11434/v1`,
