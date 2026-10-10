@@ -1,0 +1,90 @@
+name: deploy
+
+# Pull-based CD (ADR 0008):
+# - every push to main builds the image and pushes registry.../tcgrass-api:sha-<commit>;
+# - the release job waits for the operator's approval (environment "production"), then moves
+#   :prod to that commit; the Droplet's deploy agent picks it up within about a minute.
+# Rollback: run this workflow by hand with an older commit. During the field test: don't approve.
+#
+# The registry secrets are ENVIRONMENT secrets (never repository secrets): "registry" (main
+# only) for the build, "production" (main only, operator as required reviewer) for the release.
+# A workflow on another branch, or a job without the environment, can't read them.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: "Full commit SHA to release (its image must exist). Empty = this commit."
+        required: false
+        default: ""
+
+permissions:
+  contents: read
+
+# One release at a time; never cancel a release half-way.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+env:
+  REGISTRY: registry.digitalocean.com
+  IMAGE: registry.digitalocean.com/${{ vars.DO_REGISTRY_NAME }}/tcgrass-api
+
+jobs:
+  build:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: registry
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Log in to DigitalOcean Container Registry
+        env:
+          DO_REGISTRY_USERNAME: ${{ secrets.DO_REGISTRY_USERNAME }}
+          DO_REGISTRY_TOKEN: ${{ secrets.DO_REGISTRY_TOKEN }}
+        run: echo "$DO_REGISTRY_TOKEN" | docker login "$REGISTRY" -u "$DO_REGISTRY_USERNAME" --password-stdin
+      - name: Build and push sha-${{ github.sha }}
+        run: |
+          docker build --pull -t "$IMAGE:sha-$GITHUB_SHA" .
+          docker push "$IMAGE:sha-$GITHUB_SHA"
+      - name: Log out
+        if: always()
+        run: docker logout "$REGISTRY"
+
+  release:
+    needs: build
+    # Runs after a successful build, or alone for a manual release/rollback.
+    if: always() && (needs.build.result == 'success' || (github.event_name == 'workflow_dispatch' && needs.build.result == 'skipped'))
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Required reviewer: the operator. Nothing reaches production without this approval.
+    environment: production
+    steps:
+      - name: Choose the commit
+        id: commit
+        env:
+          INPUT_COMMIT: ${{ inputs.commit }}
+        run: |
+          commit="${INPUT_COMMIT:-$GITHUB_SHA}"
+          if [[ ! "$commit" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "commit must be a full 40-character SHA" >&2
+            exit 1
+          fi
+          echo "sha=$commit" >> "$GITHUB_OUTPUT"
+      - name: Log in to DigitalOcean Container Registry
+        env:
+          DO_REGISTRY_USERNAME: ${{ secrets.DO_REGISTRY_USERNAME }}
+          DO_REGISTRY_TOKEN: ${{ secrets.DO_REGISTRY_TOKEN }}
+        run: echo "$DO_REGISTRY_TOKEN" | docker login "$REGISTRY" -u "$DO_REGISTRY_USERNAME" --password-stdin
+      - name: Move :prod to sha-${{ steps.commit.outputs.sha }}
+        env:
+          SHA: ${{ steps.commit.outputs.sha }}
+        # Copies the manifest in the registry; nothing is rebuilt.
+        run: docker buildx imagetools create -t "$IMAGE:prod" "$IMAGE:sha-$SHA"
+      - name: Log out
+        if: always()
+        run: docker logout "$REGISTRY"

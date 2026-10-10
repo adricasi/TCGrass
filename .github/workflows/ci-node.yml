@@ -32,5 +32,18 @@ jobs:
         run: npm run typecheck
       - name: Tests
         run: npm test -- --coverage
+      - name: Build (server + PWA)
+        run: npm run build
       - name: Dependency audit
         run: npm audit --audit-level=high
+
+  # The production image builds on every PR, not only when deploy.yml pushes it (no push here).
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Build image
+        run: docker build --pull -t tcgrass-api:ci .
