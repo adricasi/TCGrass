@@ -1,7 +1,7 @@
 # Tasks: TCGrass
 
 - Status: Approved (2026-10-08) <!-- Draft | In review | Approved -->
-- Last updated: 2026-10-08 (spec-reviewer + Gemini fixes applied)
+- Last updated: 2026-10-10 (G-7 production: T-016, T-017, T-018 added; ADR 0006)
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
 Order = implementation order. Each task is a small vertical slice (≤ ~1 day), references
@@ -25,6 +25,8 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
 
 - **Minimum submittable**: T-001–T-006 + T-012 (capture, reveal, binder; ≈ 6.5 h).
 - **Needed for the field-test trade metric**: T-007–T-009 (Must, but cuttable for submission).
+- **Added 2026-10-10 (G-7):** T-016 (0.75 h) is not cuttable when the deploy uses pay-per-use
+  inference; T-018 (👤 DO check, ~10 min) runs before T-002b.
 - **Cut list, in order**: T-010 (daily pack) → AC-009.6 sent-offers screen → UI component
   tests → T-011 backups and load script → T-013 install (keep the AC-013.2 hint).
 
@@ -78,6 +80,9 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
     sslip.io PSL question, put `.env` on it, `docker compose up -d --build`.
   - Done when: CI green; on a real phone `https://<reserved-ip>.sslip.io` shows the camera and
     a photo of an oak returns `oak`; `curl -I http://…` returns 301/308 to https.
+  - Note (2026-10-10, G-7): the field-test deploy (Sat 18:00) uses whichever endpoint passes:
+    DO serverless if Q-10 passes in time (T-018), otherwise a GPU Droplet or the laptop tunnel
+    as validated in T-001. **Any deploy that uses pay-per-use inference requires T-016 first.**
 
 ## Milestone 2: Collect (T-003 Fri evening; rest Sat 10-10 morning)
 - [x] T-003: Database + expansion seed command
@@ -118,6 +123,20 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
     truncated to 140 before storing; messages for none/screen/retry.
   - Done when: tests for AC-003.5–003.7, 003.11, AC-004.1–004.3, AC-005.1–005.3,
     AC-006.1–006.5 pass; a photo on the phone produces a revealed card stored in the DB.
+
+- [ ] T-016: Daily model-call caps (added 2026-10-10, ADR 0006)
+  - Estimate: 0.75 h
+  - Requirements: AC-003.13, AC-003.14, NFR-012
+  - Depends on: T-005
+  - Scope: additive migration with per-UTC-day counters (global and per player); atomic
+    check-and-increment just before the model call, after type/size, per-player minute limit
+    and in-flight checks (calls that end in `retry` count); `INFERENCE_DAILY_CALL_LIMIT`
+    (default 3,000) and `CAPTURES_PER_PLAYER_PER_DAY` (default 30) config; 503 `daily_limit`
+    with the resume time; PWA message in local time; log once per day when a cap is reached;
+    log the endpoint's `usage` tokens per capture.
+  - Done when: tests for AC-003.13, AC-003.14 and NFR-012 pass (fake clock, low caps, parallel
+    captures don't overshoot, a restart keeps the counts). Not cuttable if the deploy uses
+    pay-per-use inference.
 
 - [~] T-006: Binder + odds view
   - Estimate: 0.75 h
@@ -227,8 +246,8 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
 | Requirement | Tasks |
 |---|---|
 | REQ-001 | T-001, T-003, T-012 |
-| REQ-002 | T-004 |
-| REQ-003 | T-001, T-002a, T-005 |
+| REQ-002 | T-004, T-017 (AC-002.1 amended, AC-002.11) |
+| REQ-003 | T-001, T-002a, T-005, T-016 (AC-003.13, AC-003.14) |
 | REQ-004 | T-005, T-001 + T-002b (AC-004.4) |
 | REQ-005 | T-005, T-006 |
 | REQ-006 | T-005 |
@@ -250,3 +269,37 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
 | NFR-009 | T-009 |
 | NFR-010 | T-011 |
 | NFR-011 | T-002b, T-015 |
+| NFR-012 | T-016 |
+| NFR-013 | T-017 |
+| NFR-014 | T-017 |
+| NFR-015 | T-017 |
+
+## After the challenge (G-7, added 2026-10-10)
+- [ ] T-018: 👤 DO serverless check (added 2026-10-10, accepts ADR 0006)
+  - Estimate: ~10 min of the human's time
+  - Requirements: Q-10, Q-9
+  - Depends on: T-001
+  - Scope: create a DO inference key; confirm the Gemma vision model id with `GET /v1/models`;
+    run `npm run spike -- spike-photos` with the DO `INFERENCE_*` values; note DO's retention
+    and training-use terms for prompts and images.
+  - Done when: result recorded in design.md (§ Options considered) and product.md Q-7/Q-10;
+    ADR 0006 set to Accepted (pass) or its fallback applied (fail).
+
+- [ ] T-017: Production readiness before the public launch
+  - Estimate: ~3 h (agent + human)
+  - Requirements: NFR-013, NFR-014, NFR-015, AC-002.1 (amended), AC-002.11, Q-9, Q-11
+  - Depends on: T-016, T-018, T-002b
+  - Scope:
+    - Off-box encrypted backup copy (credential limited to one bucket, or a pull from outside)
+      and a documented restore drill (NFR-014).
+    - Privacy notice and terms page (Q-11: provider terms, controller and contact, erasure
+      route, how to report an offensive name), linked from first run and profile (AC-002.11).
+    - Monitoring: uptime check on `/healthz`; an alert when a daily cap is hit; a DO billing
+      alert; the DO inference prepaid balance kept small.
+    - Log rotation and retention for `LOG_FILE_PATH` and Docker logs on the volume.
+    - Patch cadence: Dependabot/Renovate and a monthly base-image rebuild.
+    - Migration policy after the challenge week: back up before every migration.
+    - NFR-013 load and size check against a seeded DB; add any missing indexes.
+    - A permanent hostname (own domain, or sslip.io's rate-limit/PSL status confirmed).
+  - Done when: restore drill documented; privacy notice live and linked; uptime, cap and billing
+    alerts set; load check meets NFR-013.
