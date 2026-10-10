@@ -439,3 +439,20 @@ main {
   color: inherit;
   text-decoration: underline;
 }
+
+/* Trades (REQ-009) */
+.instance.pick {
+  width: 100%;
+  cursor: pointer;
+}
+
+.offer-status {
+  font-size: 0.9rem;
+  font-style: italic;
+}
+
+.offer-cancelled,
+.offer-declined,
+.offer-failed {
+  opacity: 0.6;
+}

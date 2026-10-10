@@ -60,9 +60,51 @@ export function areFriends(db: Db, a: number, b: number): boolean {
   );
 }
 
+/** Declines in a row after which the sender must pause: the first request + 3 re-sends. */
+export const MAX_DECLINED_REQUESTS = 4;
+/** How long that pause lasts, counted from the last decline (AC-008.10). */
+export const RESEND_COOLDOWN_MS = 24 * 60 * 60 * 1000;
+
+/**
+ * Anti-harassment rule (AC-008.10). After a decline the sender may re-send at once, 3 times.
+ * Once the recipient has declined 4 requests within 24 h, the sender waits until 24 h after
+ * the last decline; after that the count starts over. Only sender→recipient counts, so the
+ * recipient can still send a request the other way.
+ */
+function checkDeclineLimits(db: Db, fromId: number, toId: number, now: Date): void {
+  const last = db
+    .prepare<[number, number], { last: string | null }>(
+      `SELECT MAX(resolved_at) AS last FROM friend_requests
+        WHERE from_player_id = ? AND to_player_id = ? AND status = 'declined'`,
+    )
+    .get(fromId, toId)?.last;
+  if (last === null || last === undefined) {
+    return;
+  }
+  const lastMs = Date.parse(last);
+  const waitMs = lastMs + RESEND_COOLDOWN_MS - now.getTime();
+  if (waitMs <= 0) {
+    return; // 24 h since the last decline: start over.
+  }
+  const recent = db
+    .prepare<[number, number, string], { n: number }>(
+      `SELECT COUNT(*) AS n FROM friend_requests
+        WHERE from_player_id = ? AND to_player_id = ? AND status = 'declined' AND resolved_at > ?`,
+    )
+    .get(fromId, toId, new Date(lastMs - RESEND_COOLDOWN_MS).toISOString());
+  if ((recent?.n ?? 0) >= MAX_DECLINED_REQUESTS) {
+    const hours = Math.ceil(waitMs / (60 * 60 * 1000));
+    throw new FriendError(
+      409,
+      "request_declined",
+      `This player declined your last ${MAX_DECLINED_REQUESTS} requests. You can ask again in ${hours} h.`,
+    );
+  }
+}
+
 /**
  * Sends a friend request to the player with `friendCode` (already normalised), checking
- * every AC-008.3 rule inside one IMMEDIATE transaction.
+ * every AC-008.3 and AC-008.10 rule inside one IMMEDIATE transaction.
  */
 export function sendFriendRequest(
   db: Db,
@@ -95,6 +137,7 @@ export function sendFriendRequest(
           "A friend request between you is already waiting for an answer.",
         );
       }
+      checkDeclineLimits(db, fromId, target.id, now);
       const result = db
         .prepare(
           "INSERT INTO friend_requests (from_player_id, to_player_id, status, created_at) VALUES (?, ?, 'pending', ?)",

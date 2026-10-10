@@ -193,6 +193,7 @@ naming any missing or invalid key without printing values (AC-012.2), or if
   | IDOR on trades / friend requests | Every action checks the caller is sender/recipient and re-checks ownership inside the transaction |
   | Race conditions (double accept, accept vs cancel) | IMMEDIATE transactions serialise writers; status re-checked inside; partial unique index for locks (NFR-009) |
   | Mass player creation / spam requests | Per-IP creation limit; friend requests need acceptance |
+  | Harassment by a player (re-sent friend requests, offer flooding) | After a decline, the sender may re-send at once, 3 times; after 4 declines within 24 h they wait until 24 h after the last decline, then start over (AC-008.10, 409 `request_declined`); at most 10 pending offers per sender→recipient pair (AC-009.8, 409 `too_many_offers`). Both checked inside the IMMEDIATE transaction |
   | Photo leakage | In-memory only; log redaction test; only the configured endpoint receives it |
   | Cost abuse of the GPU / inference | Per-player capture limit + global in-flight cap; GPU Droplet destroyed outside testing (NFR-006) |
 

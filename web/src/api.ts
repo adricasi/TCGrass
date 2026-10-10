@@ -14,6 +14,13 @@ import {
   inboxResponseSchema,
 } from "../../src/shared/schemas/friends.js";
 import {
+  type CreateTradeRequest,
+  type SentOffer,
+  sentOfferSchema,
+  type SentOffersResponse,
+  sentOffersResponseSchema,
+} from "../../src/shared/schemas/trades.js";
+import {
   type ExpansionResponse,
   expansionResponseSchema,
 } from "../../src/shared/schemas/expansion.js";
@@ -139,4 +146,31 @@ export function getFriendBinder(secret: string, friendCode: string): Promise<Fri
 
 export function getInbox(secret: string): Promise<InboxResponse> {
   return request("/api/inbox", { headers: authHeader(secret) }, inboxResponseSchema);
+}
+
+/** `POST /api/trades`: offer one of my cards for a friend's (AC-009.1). */
+export function createTradeOffer(secret: string, offer: CreateTradeRequest): Promise<SentOffer> {
+  return request(
+    "/api/trades",
+    {
+      method: "POST",
+      headers: { ...authHeader(secret), "content-type": "application/json" },
+      body: JSON.stringify(offer),
+    },
+    sentOfferSchema,
+  );
+}
+
+/** `POST /api/trades/:id/cancel` (AC-009.5). */
+export function cancelTradeOffer(secret: string, offerId: number): Promise<SentOffer> {
+  return request(
+    `/api/trades/${offerId}/cancel`,
+    { method: "POST", headers: authHeader(secret) },
+    sentOfferSchema,
+  );
+}
+
+/** `GET /api/trades/sent` (AC-009.6). */
+export function getSentOffers(secret: string): Promise<SentOffersResponse> {
+  return request("/api/trades/sent", { headers: authHeader(secret) }, sentOffersResponseSchema);
 }

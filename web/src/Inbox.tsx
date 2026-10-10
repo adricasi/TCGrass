@@ -2,8 +2,12 @@ import { useEffect, useState } from "preact/hooks";
 
 import type { InboxResponse } from "../../src/shared/schemas/friends.js";
 import { answerFriendRequest, ApiError, getInbox } from "./api.js";
+import { SentOffers } from "./SentOffers.js";
 
-/** Inbox: received friend requests to accept or decline (AC-008.6, AC-008.7). */
+/**
+ * Inbox: received friend requests to accept or decline (AC-008.6, AC-008.7), followed by the
+ * offers the player sent (AC-009.6).
+ */
 export function Inbox({
   secret,
   onChanged,
@@ -87,6 +91,7 @@ export function Inbox({
           </li>
         ))}
       </ul>
+      <SentOffers secret={secret} onUnauthenticated={onUnauthenticated} />
     </section>
   );
 }

@@ -1,7 +1,7 @@
 # Requirements: TCGrass
 
 - Status: Approved (2026-10-08) <!-- Draft | In review | Approved -->
-- Last updated: 2026-10-08 (spec-reviewer + Gemini fixes applied)
+- Last updated: 2026-10-10 (AC-008.10 and AC-009.8 added: anti-spam limits, author decision)
 - Input: [product.md](product.md)
 
 IDs are permanent: never renumber or reuse. Deprecate with ~~strikethrough~~ and a note.
@@ -182,7 +182,8 @@ Priority follows the build order in product.md: Must = priorities 1–3, Should 
     way to copy or share it.
   - AC-008.2: WHEN the player enters a friend code THE SYSTEM SHALL trim whitespace and convert
     it to uppercase before matching, and WHEN it matches an existing player who is not the
-    sender THE SYSTEM SHALL create a `pending` friend request to that player.
+    sender THE SYSTEM SHALL create a `pending` friend request to that player. Subject to AC-008.3 and
+    AC-008.10.
   - AC-008.3: IF the code does not exist THEN THE SYSTEM SHALL say "No player with that code";
     IF it is the player's own code THEN THE SYSTEM SHALL reject it; IF they are already
     friends or a pending request already exists between them in either direction THEN THE
@@ -201,6 +202,11 @@ Priority follows the build order in product.md: Must = priorities 1–3, Should 
     player who is not its recipient THEN THE SYSTEM SHALL reject it and change nothing.
   - AC-008.9: WHILE a friend request is `pending` THE SYSTEM SHALL NOT let either player see the
     other's binder or send them trade offers as friends.
+  - AC-008.10 (added 2026-10-10, revised the same day): WHEN the recipient declines a friend
+    request THE SYSTEM SHALL let the sender send them a new one at once, up to 3 re-sends; IF
+    the recipient has declined 4 requests from the sender (the first plus 3 re-sends) within
+    24 hours THEN THE SYSTEM SHALL create nothing until 24 hours after the last decline, and
+    say when the sender can ask again. After that the count starts over.
 
 ### REQ-009: Propose a 1:1 trade
 - Story: As a player, I want to offer one of my cards for one of another player's cards and
@@ -227,6 +233,9 @@ Priority follows the build order in product.md: Must = priorities 1–3, Should 
     cards, the other player's display name and its status.
   - AC-009.7: WHILE an offer is `pending` THE SYSTEM SHALL keep it pending with no expiry until
     it is accepted, declined, cancelled or failed.
+  - AC-009.8 (added 2026-10-10): IF the sender already has 10 `pending` offers to the same
+    recipient THEN THE SYSTEM SHALL reject a new offer to them until one of those leaves
+    `pending`.
 
 ### REQ-010: Inbox, accept and decline
 - Story: As a player, I want to see trade offers I've received and accept or decline them, so
