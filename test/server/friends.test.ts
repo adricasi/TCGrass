@@ -257,58 +257,58 @@ describe("accepting and declining", () => {
 });
 
 describe("re-sending after a decline (AC-008.10)", () => {
-  /** Declines Ada's current request to Bob and dates the decline `hoursAgo` back. */
-  async function declineAll(w: World, hoursAgo: number): Promise<void> {
+  /** Bob declines Ada's pending request; the decline is dated `hoursAgo` back. */
+  async function bobDeclines(w: World, hoursAgo = 0): Promise<void> {
     const inbox = inboxResponseSchema.parse(
       await (await w.t.app.request("/api/inbox", { headers: as(w.bob) })).json(),
     );
-    for (const request of inbox.friendRequests) {
-      await respond(w.t, w.bob, request.id, "decline");
+    const request = inbox.friendRequests[0];
+    if (request === undefined) {
+      throw new Error("no pending request to decline");
     }
+    await respond(w.t, w.bob, request.id, "decline");
     w.t.db
-      .prepare("UPDATE friend_requests SET resolved_at = ? WHERE status = 'declined'")
-      .run(new Date(Date.now() - hoursAgo * 60 * 60 * 1000).toISOString());
+      .prepare("UPDATE friend_requests SET resolved_at = ? WHERE id = ?")
+      .run(new Date(Date.now() - hoursAgo * 60 * 60 * 1000).toISOString(), request.id);
   }
 
-  it("AC-008.10 refuses a re-send within 24 h of a decline and says when to try again", async () => {
-    const w = world();
-    await sendRequest(w.t, w.ada, w.bob.friendCode);
-    await declineAll(w, 1);
-    const response = await sendRequest(w.t, w.ada, w.bob.friendCode);
-    expect(response.status).toBe(409);
-    expect(await errorOf(response)).toEqual({
-      code: "request_declined",
-      message: "This player declined your last request. You can ask again in 23 h.",
-    });
-    expect(count(w, "SELECT COUNT(*) AS n FROM friend_requests")).toBe(1);
-  });
-
-  it("AC-008.10 allows a re-send once 24 h have passed", async () => {
-    const w = world();
-    await sendRequest(w.t, w.ada, w.bob.friendCode);
-    await declineAll(w, 24);
-    expect((await sendRequest(w.t, w.ada, w.bob.friendCode)).status).toBe(201);
-  });
-
-  it("AC-008.10 allows 3 re-sends at most: after the 4th decline the sender can't ask again", async () => {
-    const w = world();
-    for (let attempt = 0; attempt < 4; attempt += 1) {
+  async function sendAndDecline(w: World, times: number, hoursAgo = 0): Promise<void> {
+    for (let attempt = 0; attempt < times; attempt += 1) {
       expect((await sendRequest(w.t, w.ada, w.bob.friendCode)).status).toBe(201);
-      await declineAll(w, 25);
+      await bobDeclines(w, hoursAgo);
     }
+  }
+
+  it("AC-008.10 allows re-sending straight after a decline, 3 times", async () => {
+    const w = world();
+    await sendAndDecline(w, 3); // the first request + 2 re-sends, all declined
+    expect((await sendRequest(w.t, w.ada, w.bob.friendCode)).status).toBe(201); // 3rd re-send
+  });
+
+  it("AC-008.10 blocks for 24 h after the 3rd re-send is declined and says when", async () => {
+    const w = world();
+    await sendAndDecline(w, 4, 1); // 4 declines, the last one 1 h ago
     const response = await sendRequest(w.t, w.ada, w.bob.friendCode);
     expect(response.status).toBe(409);
     expect(await errorOf(response)).toEqual({
       code: "request_declined",
-      message: "This player declined your requests, so you can't send them more.",
+      message: "This player declined your last 4 requests. You can ask again in 23 h.",
     });
+    expect(count(w, "SELECT COUNT(*) AS n FROM friend_requests WHERE status = 'pending'")).toBe(0);
+  });
+
+  it("AC-008.10 starts over once 24 h have passed since the last decline", async () => {
+    const w = world();
+    await sendAndDecline(w, 4, 25);
+    // A fresh cycle: the first request and 3 re-sends are allowed again.
+    await sendAndDecline(w, 3);
+    expect((await sendRequest(w.t, w.ada, w.bob.friendCode)).status).toBe(201);
   });
 
   it("AC-008.10 counts only the sender→recipient direction", async () => {
     const w = world();
-    await sendRequest(w.t, w.ada, w.bob.friendCode);
-    await declineAll(w, 1);
-    // Bob declined Ada; Bob may still ask Ada himself, and others may ask Bob.
+    await sendAndDecline(w, 4, 1);
+    // Bob declined Ada 4 times; Bob may still ask Ada, and others may ask Bob.
     expect((await sendRequest(w.t, w.bob, w.ada.friendCode)).status).toBe(201);
     expect((await sendRequest(w.t, w.cy, w.bob.friendCode)).status).toBe(201);
   });

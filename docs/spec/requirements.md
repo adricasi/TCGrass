@@ -202,10 +202,11 @@ Priority follows the build order in product.md: Must = priorities 1–3, Should 
     player who is not its recipient THEN THE SYSTEM SHALL reject it and change nothing.
   - AC-008.9: WHILE a friend request is `pending` THE SYSTEM SHALL NOT let either player see the
     other's binder or send them trade offers as friends.
-  - AC-008.10 (added 2026-10-10): IF the recipient declined the sender's previous request less
-    than 24 hours ago, or has already declined 4 requests from the sender (the first one plus
-    3 re-sends), THEN THE SYSTEM SHALL create nothing and say when, or that, the sender can no
-    longer send them requests.
+  - AC-008.10 (added 2026-10-10, revised the same day): WHEN the recipient declines a friend
+    request THE SYSTEM SHALL let the sender send them a new one at once, up to 3 re-sends; IF
+    the recipient has declined 4 requests from the sender (the first plus 3 re-sends) within
+    24 hours THEN THE SYSTEM SHALL create nothing until 24 hours after the last decline, and
+    say when the sender can ask again. After that the count starts over.
 
 ### REQ-009: Propose a 1:1 trade
 - Story: As a player, I want to offer one of my cards for one of another player's cards and

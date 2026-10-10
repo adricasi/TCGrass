@@ -151,6 +151,7 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
   - Done when: tests for AC-009.1–009.3, 009.4 (friend case), 009.5–009.7 pass.
   - Follow-up (2026-10-10, author decision): AC-008.10 (friend-request cooldown and re-send
     limit) and AC-009.8 (10 pending offers per pair) added to the spec and built on this branch.
+    T-009: add a test that a *declined* offer also frees an AC-009.8 slot.
 
 - [ ] T-009: Inbox: accept/decline with atomic swap + badge
   - Estimate: 1 h
