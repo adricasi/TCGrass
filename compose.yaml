@@ -13,7 +13,11 @@ x-logging: &logging
 services:
   api:
     build: .
-    image: tcgrass-api
+    # Local: built from source (`--build`). Production: the release the deploy agent pins by
+    # digest (API_IMAGE, ADR 0008); use `tcgrass-compose` on the Droplet for manual commands.
+    image: ${API_IMAGE:-tcgrass-api}
+    # The image's `node` user, fixed here so a pushed image can't choose to run as root.
+    user: "1000:1000"
     restart: unless-stopped
     # Inference settings and caps. Only this service gets the file (it holds INFERENCE_API_KEY).
     env_file: .env

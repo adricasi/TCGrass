@@ -1,0 +1,12 @@
+[Unit]
+Description=TCGrass pull-based deploy (ADR 0008)
+Wants=network-online.target
+After=network-online.target docker.service
+Requires=docker.service
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/tcgrass/deploy.env
+ExecStart=/usr/local/bin/tcgrass-deploy
+# Oneshot units have no start timeout by default; a hung pull must not stop every later run.
+TimeoutStartSec=10min

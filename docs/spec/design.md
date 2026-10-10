@@ -1,8 +1,8 @@
 # Design: TCGrass
 
 - Status: Approved (2026-10-08) <!-- Draft | In review | Approved -->
-- Last updated: 2026-10-10 (rescope: capture cooldown, ADR 0007; reveal animation; daily pack
-  deferred; earlier: DO check result, ADR 0006 accepted)
+- Last updated: 2026-10-11 (releases through DOCR pulled by the Droplet, ADR 0008; earlier:
+  capture cooldown, ADR 0007; reveal animation; daily pack deferred; ADR 0006 accepted)
 - Implements: requirements.md (REQ-*, NFR-*)
 
 ## Overview
@@ -43,6 +43,7 @@ flowchart LR
 | Datastore | SQLite (better-sqlite3) · Managed Postgres · `node:sqlite` | SQLite + better-sqlite3 | [0004](../adr/0004-store-game-state-in-sqlite.md) |
 | Stack / layout | Hono + Preact · Fastify + React · Express + vanilla; workspaces vs one package | Hono + zod, Vite + Preact, one package | [0005](../adr/0005-use-hono-and-preact-in-one-typescript-package.md) |
 | Production inference (G-7) | DO serverless pay-per-use · always-on GPU Droplet · laptop Ollama · other provider | DO serverless Gemma 4 + daily call caps (accepted 2026-10-10) | [0006](../adr/0006-run-production-inference-on-do-serverless-with-a-daily-cap.md) |
+| Releases (how code reaches the Droplet) | SSH from CI · self-hosted runner · Watchtower · DOCR webhook · Tailscale · pull agent on the Droplet | Images built in GitHub Actions, stored in DOCR, promoted to `:prod` on approval, pulled by digest by a systemd timer (accepted 2026-10-11) | [0008](../adr/0008-release-through-docr-and-pull-on-the-droplet.md) |
 | Capture cooldown (REQ-014) | `capture_cooldowns` table · `captured_by` column on `card_instances` · in-memory map · per-expansion YAML setting | Table, length from env `CAPTURE_COOLDOWN_HOURS` (accepted 2026-10-10) | [0007](../adr/0007-limit-captures-with-a-per-card-cooldown.md) |
 
 The inference **path** (DO serverless vs vLLM on GPU Droplet vs Ollama) needs no design change.
@@ -72,6 +73,8 @@ capture can take a moment.
 | Expansion loader (`src/server/expansion/`, `npm run seed`) | Parse + validate YAML, check images, upsert into DB | `yaml` + zod | REQ-001 |
 | Expansions (`expansions/<id>/`) | `expansion.yaml` + `images/<card id>.png` | files in repo | REQ-001, G-4 |
 | Reverse proxy | TLS (Let's Encrypt), HTTP→HTTPS (308), body size cap, compression, sets `X-Forwarded-For` | Caddy 2 | NFR-001 |
+| Release pipeline | Build and push `tcgrass-api:sha-<commit>`; point `:prod` at it after the operator's approval | GitHub Actions `deploy.yml` (environments `registry`, `production`), DigitalOcean Container Registry | ADR 0008 |
+| Deploy agent (`deploy/droplet/`) | Every minute: resolve `:prod` to a digest; when it changes, pull by digest, seed, `docker compose up -d --wait`, record only if healthy. `compose.yaml` and `Caddyfile` come from `setup.sh`, never from the image | systemd timer + shell script on the Droplet | ADR 0008, NFR-003 |
 | Datastore | Game state | SQLite file (WAL) on a DO Volume | ADR 0004 |
 | Inference endpoint | Gemma vision | DO serverless / vLLM on GPU Droplet / Ollama | REQ-003, 012 |
 
@@ -168,7 +171,10 @@ naming any missing or invalid key without printing values (AC-012.2), or if
   base64url) is a bearer credential stored only on the device (localStorage) and as a SHA-256
   hash on the server. No human or service accounts in the app. The human operates the
   Droplet with an SSH key; agents never deploy or create infrastructure.
-- IAM (least privilege): DO API token is used only by the human, never on the Droplet. The
+- IAM (least privilege): DO API tokens are used only by the human, never on the Droplet.
+  GitHub holds one DO token used only to push images, as an environment secret limited to
+  `main` (ADR 0008). The Droplet holds read-only registry credentials that expire after 90
+  days, and containers can't reach the metadata service. The
   API container runs as a non-root user with a read-only root filesystem; only the DB volume
   and a tmpfs are writable. Inference API key scoped to inference only.
 - Secrets: `INFERENCE_API_KEY` in a `.env` file on the Droplet (mode 600, git-ignored), passed
@@ -237,19 +243,19 @@ naming any missing or invalid key without printing values (AC-012.2), or if
 - **Local**: `npm run dev` (Vite dev server proxying `/api` to the API) against Ollama
   `gemma` on the laptop; SQLite file in `./.dev/` (git-ignored; `./data` is the Compose volume and is off-limits to agents). Camera testing on a phone over HTTPS via
   `docker compose up` with Caddy's internal CA or a tunnel.
-- **Prod**: one Droplet (Ubuntu LTS, unattended-upgrades on), tagged per ADR 0002. The human
-  checks out a tag, runs `docker compose build`, then
-  `docker compose run --rm api node dist/server/seed-cli.js expansions/everyday-nature` (npm
-  can't write its cache on the read-only root filesystem), then `docker compose up -d` (steps
-  in `docs/deploy.md`; agents never deploy). No redeploys during the field test. Caddy obtains
+- **Prod**: one Droplet (Ubuntu LTS, unattended-upgrades on), created by hand and tagged per
+  ADR 0002, prepared once with `deploy/droplet/setup.sh`. Releases (ADR 0008): a merge to
+  `main` builds and pushes `tcgrass-api:sha-<commit>` to DOCR; after the operator approves the
+  `production` environment, `:prod` points at it and the Droplet's agent deploys it by digest
+  within a minute (steps in `docs/deploy.md`; agents never deploy). No redeploys during the field test. Caddy obtains
   a certificate for `PUBLIC_HOSTNAME` = `<reserved-ip with dashes>.sslip.io`. Checked
   2026-10-10: neither sslip.io nor nip.io is on the Public Suffix List, so both share Let's
   Encrypt's per-domain limits; if issuance is rate-limited, use a hostname under a listed
   domain (e.g. duckdns.org).
 - **CI** (GitHub Actions, existing): lint, typecheck, tests with coverage, build (server +
   PWA), `npm audit --audit-level=high`, gitleaks, Docker image build (no push).
-- Rollout / rollback: deploy from a git tag; rollback = check out the previous tag and
-  rebuild. DB migrations are additive only during the challenge week.
+- Rollout / rollback: approve the release of a commit; rollback = run `deploy` by hand with an
+  earlier commit and approve it. DB migrations are additive only during the challenge week.
 
 ## Testing strategy
 - **Unit** (Vitest): expansion schema validation (AC-001.2–001.4), rarity distribution with
@@ -298,6 +304,7 @@ Estimates, to be checked against DigitalOcean's pricing page when the resources 
 | D-5 | Anonymous bearer secret per device, stored hashed on the server | — (product.md A-2) |
 | D-6 | Card lock enforced by a partial unique index on pending offers | — (Q-4) |
 | D-7 | Per-player, per-card capture cooldown in a `capture_cooldowns` table, length from env | [0007](../adr/0007-limit-captures-with-a-per-card-cooldown.md) |
+| D-8 | Images built in CI, stored in DOCR, deployed by digest by a pull agent on the Droplet | [0008](../adr/0008-release-through-docr-and-pull-on-the-droplet.md) |
 
 ## Open questions (design)
 - ~~Q-7 (product.md)~~ resolved 2026-10-10: DO serverless `gemma-4-31B-it` (ADR 0006, accepted).
@@ -332,7 +339,7 @@ Estimates, to be checked against DigitalOcean's pricing page when the resources 
 | NFR-008 | Expansion file (license); REQ-002 notice |
 | NFR-009 | Data model; D-3; Testing (concurrency) |
 | NFR-010 | Testing (manual) |
-| NFR-011 | Environments and deployment; ADR 0002, 0003 |
+| NFR-011 | Environments and deployment; ADR 0002, 0003, 0008 |
 | NFR-012 | Security design (rate limits, threats); Configuration; ADR 0006 |
 | NFR-013 | Data model (indexes on `card_instances(owner_id)`, `trade_offers(to_player_id, status)`); ADR 0004; load script (T-017) |
 | NFR-014 | Reliability and operations (backups; off-box copy designed in T-017) |

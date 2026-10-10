@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# `docker compose` for the operator, pinned to the release the agent deployed (ADR 0008).
+# Without it, a manual `docker compose up` would fall back to the local image name and try to
+# build. Example: tcgrass-compose up -d api   (after editing .env: kill switch, cooldown).
+set -euo pipefail
+
+app_dir="${APP_DIR:-/opt/tcgrass}"
+cd "$app_dir"
+if [[ ! -s .deployed-image ]]; then
+  echo "no release deployed yet ($app_dir/.deployed-image missing); approve one first" >&2
+  exit 1
+fi
+API_IMAGE="$(cat .deployed-image)"
+export API_IMAGE
+exec docker compose "$@"
