@@ -1,7 +1,8 @@
 # Product: TCGrass
 
 - Status: Approved (2026-10-08) <!-- Draft | In review | Approved -->
-- Last updated: 2026-10-10 (Q-7/Q-10 closed: DO serverless Gemma 4; earlier: G-7, ADR 0006)
+- Last updated: 2026-10-10 (rescope: daily pack deferred; capture cooldown, reveal animation and
+  visual polish added; backlog ideas; earlier: Q-7/Q-10 closed, G-7, ADR 0006)
 - Input: [idea brief](../discovery/idea-brief.md) (verdict Go, 2026-10-07) ·
   [research notes](../discovery/research-notes.md)
 
@@ -62,7 +63,11 @@ project (DEV *Hacktoberfest Open-Source AI Challenge, Week 1 "Touch Grass"*, eve
 - Installable web app (PWA) for phones with live camera capture (online only).
 - Photo → Gemma identification against the expansion's **closed catalogue**, rejection of
   screens/prints and "no match"; photo deleted right after identification.
-- Server-side rarity roll on every capture with published odds; instant card reveal.
+- Server-side rarity roll on every capture with published odds; instant card reveal with an
+  entry animation (stronger for Epic and Legendary) and a visual polish pass over the app
+  (added 2026-10-10).
+- Capture cooldown (added 2026-10-10, ADR 0007): after capturing a card, a player waits 5 hours
+  (an admin setting) before capturing the same card again; cards received in trades don't count.
 - Binder: the expansion catalogue with owned cards (and duplicates) and missing cards.
 - Anonymous players, no login: on first launch the app creates a player identity stored
   locally on the device, plus a display name and a friend code. The server keeps the
@@ -71,14 +76,17 @@ project (DEV *Hacktoberfest Open-Source AI Challenge, Week 1 "Touch Grass"*, eve
   and their collections.
 - One trading flow: 1:1 offer → recipient inbox with badge (polling) → accept/decline;
   atomic swap on accept; sender can cancel.
-- Daily trading pack: 5 cards owned by other players that you can request in a trade.
+- ~~Daily trading pack: 5 cards owned by other players that you can request in a trade.~~
+  Deferred 2026-10-10 (author decision) to after the challenge; see Later.
 - First expansion **"Everyday Nature"**: 15 cards (5 trees, 5 flowers, 5 domestic animals),
   one hand-generated watercolour image per card, rarity shown by frame + CSS effect.
 - Expansion as a YAML file + images folder, validated and loaded by a seed script.
 - Self-hostable deployment (`docker compose up` + env vars) on one DigitalOcean Droplet with HTTPS.
 
 Build priority (cut from the bottom when time runs out): (1) expansion + seed + card frame,
-(2) capture → identify → roll → reveal → binder, (3) friends + trading, (4) daily trading pack.
+(2) capture → identify → roll → reveal → binder, (3) friends + trading, (4) reveal animation,
+then capture cooldown, then visual polish (changed 2026-10-10; the daily trading pack was
+priority 4).
 
 ### Non-goals (explicitly out of scope)
 - Card Forge (in-app expansion editor or AI image generation).
@@ -94,6 +102,24 @@ Build priority (cut from the bottom when time runs out): (1) expansion + seed + 
 - ~~An always-on public live demo after the deadline (judges get the video and repo).~~
   Reversed 2026-10-10 by G-7: the game stays online as a public product.
 - Native mobile apps.
+- The player's photo, or any image made from it, as card art (considered 2026-10-10; see
+  Later). It would break G-3 and REQ-004.
+
+### Later (after the challenge, added 2026-10-10)
+Not in this version. Each needs a spec change (and the photo idea an ADR) before it is built.
+- **Daily trading pack** (REQ-011, T-010): requirements kept as written; the DB tables already
+  exist (migration 001), unused.
+- **Procedurally unique cards** (the planned extra once the MVP is deployed): each minted
+  instance gets a random seed, stored with it, that picks its background palette, foil pattern
+  and a serial number ("Dog #0042"). With the flavor line, every card is one of a kind, and no
+  photo data is stored.
+- **Player's photo as card art** (idea only): the photo, turned into an illustration, inside
+  the card frame, making each card personal. It conflicts with G-3 and REQ-004, because a
+  stylised photo can still show faces, homes, number plates and places, and here it would be
+  stored, shown to friends and traded. Before any spec work it needs: `ideate` (is it worth
+  it?), an ADR that rewrites G-3, opt-in, content moderation and reporting, an erasure route,
+  privacy-notice and GDPR review (Q-11), and storage and backup sizing. Gemma can't generate
+  images, so the conversion would be an on-device filter or a separate image model (cost, G-6).
 
 ## Constraints
 - **Deadline**: Sun **2026-10-11 23:59 PDT** = Mon 2026-10-12 08:59 CEST; aim to submit by Sun
@@ -118,7 +144,7 @@ Build priority (cut from the bottom when time runs out): (1) expansion + seed + 
 | Catalogue card | A card type in an expansion (e.g. *Oak*), with name, category, identification hint, art prompt and image |
 | Card instance | One copy owned by a player: catalogue card + rarity + owner |
 | Rarity | Common, Rare, Epic or Legendary; rolled on capture using the expansion's published odds |
-| Capture | Taking a photo that Gemma matches to a catalogue card, minting a new card instance |
+| Capture | Taking a photo that Gemma matches to a catalogue card, minting a new card instance (unless that card is on cooldown) |
 | Binder | A player's view of the catalogue: owned cards (with counts) and missing ones |
 | Player | An anonymous identity created on first launch and stored on the device; no login |
 | Friend code | A short shareable code used to add another player as a friend |
@@ -126,7 +152,8 @@ Build priority (cut from the bottom when time runs out): (1) expansion + seed + 
 | Inbox | Received pending trade offers and friend requests, with a badge counting them |
 | Available (card instance) | Owned by the shown player at read time and not locked; only available instances can be requested (A-8) |
 | Locked | A card instance that its owner has offered in a `pending` trade; the owner cannot offer it again |
-| Daily trading pack | 5 card instances owned by other players, offered each day as trade targets |
+| Daily trading pack | 5 card instances owned by other players, offered each day as trade targets (deferred 2026-10-10) |
+| Cooldown | The wait after capturing a card before the same player can capture that card again (default 5 h, `CAPTURE_COOLDOWN_HOURS`) |
 | Flavor line | A short line of text Gemma writes about the photographed subject, shown on reveal |
 
 ## Open questions
@@ -147,6 +174,10 @@ reconfirmed 2026-10-07).
   (A-2), who the data controller is and a contact address, how a player erases their data
   (GDPR applies: the author is in the EU), and how to report an offensive display name. Needed
   before the public launch, not for the field test (AC-002.11, T-017).
+- [ ] Q-12 (added 2026-10-10): Which `CAPTURE_COOLDOWN_HOURS` does the field test use? With the
+  default 5 h, nobody can capture a duplicate during the 2.5-hour test, so test trades are of
+  different cards. Default if unanswered: 5 h, as in production. Decide before the Saturday 18:00 deploy; a
+  config-only restart (same build, `docker compose up -d`) is allowed until Sun 09:30 CEST.
 
 ## Assumptions
 <!-- Anything decided without confirmation. Mark in text as [ASSUMPTION A-n]. -->
@@ -158,7 +189,7 @@ reconfirmed 2026-10-07).
   Superseded 2026-10-10: DO serverless measured p50 9.1 s / p95 26.4 s; the author accepted it
   and NFR-004 was revised to p50 ≤ 10 s, p95 ≤ 30 s.
 - A-8: Confirmed 2026-10-07: a locked instance is shown as unavailable and cannot be requested by others until its offer resolves.
-- A-9: Confirmed 2026-10-07: the field test runs in Europe (CEST); the daily pack rolls over at 00:00 UTC = 02:00 CEST, outside the test window (Sun 10:00–12:30 CEST).
+- A-9: Confirmed 2026-10-07: the field test runs in Europe (CEST); UTC-day rollovers (daily caps; the daily pack once built) happen at 00:00 UTC = 02:00 CEST, outside the test window (Sun 10:00–12:30 CEST).
 - A-10: Ollama fallback is reached via an SSH reverse tunnel to the Droplet (end-to-end encrypted, no third party), not ngrok/Cloudflare.
 - ~~A-11: Game data is retained until 2026-11-30, then the Droplet and volume are destroyed unless the project continues.~~
   Superseded 2026-10-10 by G-7: the project continues; game data is kept while the production

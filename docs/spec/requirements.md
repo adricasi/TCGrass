@@ -1,7 +1,8 @@
 # Requirements: TCGrass
 
 - Status: Approved (2026-10-08) <!-- Draft | In review | Approved -->
-- Last updated: 2026-10-10 (NFR-004 revised after the DO serverless check; earlier: AC-003.13/14, NFR-012–015)
+- Last updated: 2026-10-10 (rescope: REQ-011 deferred, REQ-014 capture cooldown, AC-006.6 reveal
+  animation; earlier: NFR-004 revised, AC-003.13/14, NFR-012–015)
 - Input: [product.md](product.md)
 
 IDs are permanent: never renumber or reuse. Deprecate with ~~strikethrough~~ and a note.
@@ -93,7 +94,8 @@ Priority follows the build order in product.md: Must = priorities 1–3, Should 
     describe people or places.
   - AC-003.5: WHEN the model returns a catalogue card id with confidence at or above the
     configured threshold (default 0.5) and the photo is not of a screen or print THE SYSTEM
-    SHALL mint a new card instance of that card for the player.
+    SHALL mint a new card instance of that card for the player, unless the capture cooldown
+    applies (AC-014.1).
   - AC-003.6: IF the model returns "none" or a confidence below the threshold THEN THE SYSTEM
     SHALL mint nothing and tell the player "No card here — try something else".
   - AC-003.7: IF the model reports a screen, printed picture or drawing THEN THE SYSTEM SHALL
@@ -171,6 +173,14 @@ Priority follows the build order in product.md: Must = priorities 1–3, Should 
     markup.
   - AC-006.5: WHEN the player dismisses the reveal THE SYSTEM SHALL return to the live camera
     preview.
+  - AC-006.6 (added 2026-10-10, author decision): WHEN a card instance is minted THE SYSTEM
+    SHALL open the reveal with an entry animation whose total duration plus delay is at most
+    2,000 ms and that ends on the full reveal of AC-006.1; Epic and Legendary SHALL use a
+    different entry animation (its own keyframes) from Common and Rare. WHEN the player taps
+    during the entry animation THE SYSTEM SHALL jump to its end without dismissing the reveal
+    (AC-006.5 applies only after it ends). IF the device asks for reduced motion
+    (`prefers-reduced-motion: reduce`) THEN THE SYSTEM SHALL show the reveal with no entry
+    animation and a static foil (overriding AC-006.2's animation).
 
 ### REQ-007: Binder
 - Story: As a player, I want to see which cards I have and which I'm missing, so that I know
@@ -241,6 +251,8 @@ Priority follows the build order in product.md: Must = priorities 1–3, Should 
     is not a friend and is not in the sender's current daily trading pack, THEN THE SYSTEM
     SHALL reject the offer. The offer's source (friend or daily pack) is decided by the
     server, preferring friend when both apply.
+    (2026-10-10: the daily-pack parts of AC-009.1 and AC-009.4 are deferred with REQ-011; until
+    REQ-011 is built, only a friend's card can be requested.)
   - AC-009.5: WHEN the sender cancels a `pending` offer THE SYSTEM SHALL set it to `cancelled`
     and unlock the offered card.
   - AC-009.6: WHEN the player opens their sent offers THE SYSTEM SHALL list each with both
@@ -280,7 +292,9 @@ Priority follows the build order in product.md: Must = priorities 1–3, Should 
 ### REQ-011: Daily trading pack
 - Story: As a player, I want a daily selection of cards owned by other players, so that I can
   trade with people beyond my friends.
-- Priority: Should
+- Priority: Won't (this version). Deferred 2026-10-10 by the author to after the challenge, in
+  favour of the reveal animation, visual polish and the capture cooldown (REQ-014). The
+  acceptance criteria below are kept unchanged for a later version.
 - Goals: G-5
 - Acceptance criteria:
   - AC-011.1: WHEN the player opens the daily trading pack THE SYSTEM SHALL show up to 5 card
@@ -320,22 +334,51 @@ Priority follows the build order in product.md: Must = priorities 1–3, Should 
     before the player is created, a hint to install it to the home screen first, because
     progress does not carry over from the tab to the installed app.
 
+### REQ-014: Capture cooldown per card (added 2026-10-10, ADR 0007)
+- Story: As a player, I want to wait a while before I can capture the same card again, so that
+  finding new things, not photographing my dog all day, is how my collection grows.
+- Priority: Should
+- Goals: G-2, G-5
+- Acceptance criteria:
+  - AC-014.1: WHEN a capture would mint a card for a player who captured that same catalogue
+    card of the active expansion less than `CAPTURE_COOLDOWN_HOURS` ago THE SYSTEM SHALL mint nothing, roll no rarity, and answer
+    with the outcome `cooldown`, the card's name and the time it can be captured again; the PWA
+    SHALL show that time in the player's local time.
+  - AC-014.2: WHEN a capture mints a card THE SYSTEM SHALL start that player's cooldown for that
+    card at the capture time, and SHALL NOT change their cooldowns for other cards.
+  - AC-014.3: WHEN a player receives a card instance in a trade THE SYSTEM SHALL NOT start or
+    change any cooldown; only captures do.
+  - AC-014.4: WHEN `CAPTURE_COOLDOWN_HOURS` is set (default 5; a decimal number from 0 to 168
+    inclusive, e.g. 0.5, where 0 turns the cooldown off) THE SYSTEM SHALL apply it after a restart with no code change,
+    including to cooldowns already running (counted from the last capture time); IF the value
+    is missing it SHALL use 5, and IF it is invalid THEN THE SYSTEM SHALL refuse to start and
+    name the setting (as in AC-012.2).
+  - AC-014.5: WHEN a capture ends in `cooldown` THE SYSTEM SHALL count its model call toward
+    both daily caps (AC-003.13, AC-003.14) like any other model call.
+  - AC-014.6: WHEN two concurrent captures of the same card by the same player both pass the
+    daily-cap check before either mints THE SYSTEM SHALL mint at most one and answer the other
+    with `cooldown`.
+- Notes: the cooldown key is (player, expansion, catalogue card), so a different active
+  expansion starts with no cooldowns. Cards captured before the cooldown was built start none.
+  Times come from the server clock, read inside the mint transaction. `availableAt` is the last
+  capture time plus the current setting; a capture exactly at that time is allowed.
+
 ## Non-functional requirements
 | ID | Category | Requirement (measurable) | Verification |
 |---|---|---|---|
 | NFR-001 | Security | All traffic over HTTPS (TLS 1.2+), HTTP redirected (301 or 308) to HTTPS. Player secrets sent only in a request header, never in URLs, never logged. Every API input validated against a schema at the boundary; model output validated against a schema and the catalogue ids. No secrets in the repo (gitleaks in pre-commit and CI). `npm audit --audit-level=high` reports 0. | Tests; CI; manual TLS check (`curl -I http://…` → 301/308 to https) |
 | NFR-002 | Privacy / data classification | 0 photos persisted (REQ-004). Stored personal data limited to display name; player secret is a credential (Confidential). No analytics, trackers or third-party scripts. | Tests for REQ-004; grep of DB/disk/logs after field test; review of served HTML |
-| NFR-003 | Availability (SLO) | (Challenge week; production: no SLO, best effort, monitored per T-017.) During the field test (Sun 2026-10-11, 10:00–12:30 CEST) ≥ 95 % of API requests succeed (HTTP < 500) and ≥ 90 % of captures end in `card`, `none` or `screen` (not `retry`). No redeploys during the test. Daily DB backup kept 7 days on the same volume (no off-box copy). No SLO after the deadline. | Request log file on the volume; backup test |
+| NFR-003 | Availability (SLO) | (Challenge week; production: no SLO, best effort, monitored per T-017.) During the field test (Sun 2026-10-11, 10:00–12:30 CEST) ≥ 95 % of API requests succeed (HTTP < 500) and ≥ 90 % of captures end in `card`, `none`, `screen` or `cooldown` (not `retry`). No redeploys during the test. Daily DB backup kept 7 days on the same volume (no off-box copy). No SLO after the deadline. | Request log file on the volume; backup test |
 | NFR-004 | Performance | Capture: server-side p50 ≤ 10 s and p95 ≤ 30 s (request received → response sent) with DO serverless Gemma 4 (revised 2026-10-10 from p95 ≤ 8 s, author decision after the DO check: measured p50 9.1 s, p95 26.4 s; the 30 s ceiling is the model timeout, AC-003.9). Other API calls: p95 ≤ 500 ms server-side. Upload ≤ 1 MB after on-device downscale. | Per-request latency in the field-test log file; unit test for downscale size |
 | NFR-005 | Scalability | Designed for ≤ 50 players, ≤ 5,000 card instances and ≤ 5 concurrent captures. No more. (Challenge week; production target in NFR-013.) | Load script with 5 parallel captures against a stub model |
 | NFR-006 | Cost | (Challenge week; production cost in NFR-015.) ≤ $25 total cloud spend for the challenge week. With no GPU resources, idle cost ≤ $12/month. A GPU Droplet is destroyed (not just powered off, which still bills) whenever testing stops and by 2026-10-12 at the latest. | DigitalOcean billing |
-| NFR-007 | Observability | Structured JSON logs per request: request id, route, status, latency; per capture: outcome (card id / none / screen / invalid / error) and model latency. Never photo bytes, player secrets or API keys. Health endpoint reporting DB reachability. Request logs also written to a file on the volume so they survive redeploys. | Log-redaction test; manual check of health endpoint |
+| NFR-007 | Observability | Structured JSON logs per request: request id, route, status, latency; per capture: outcome (card id / none / screen / cooldown / invalid / error) and model latency. Never photo bytes, player secrets or API keys. Health endpoint reporting DB reachability. Request logs also written to a file on the volume so they survive redeploys. | Log-redaction test; manual check of health endpoint |
 | NFR-008 | Compliance / licensing | Code and expansion data Apache-2.0; image tool, model and terms recorded in `license.images`; Gemma terms respected; 16+ notice (AC-002.1); no purchases or cash-out. | Review before submission |
 | NFR-009 | Data integrity | Card instances are created only by captures and never destroyed or duplicated by trades: every instance has exactly one owner at all times. | Seeded randomized test: 500 interleaved trade actions (create, accept, decline, cancel) across 5 players; invariants checked after every action |
 | NFR-010 | Compatibility | Works on the current Chrome for Android and Safari on iOS 17+ phones, portrait, 360–430 px wide. | Manual check on 2 real phones before the field test |
 | NFR-011 | Portability | The whole stack starts with `docker compose up` plus env vars, against either DigitalOcean Gemma or local Ollama. | Run once locally with Ollama; once on the Droplet |
 | NFR-012 | Cost guardrail (added 2026-10-10) | At most `INFERENCE_DAILY_CALL_LIMIT` model calls per UTC day across all players (default 3,000 ≈ $1/day at DO Gemma 4 prices) and `CAPTURES_PER_PLAYER_PER_DAY` per player (default 30); counts kept in the DB and incremented atomically so restarts and concurrent captures can't exceed them; past a cap, captures are rejected without a model call (AC-003.13, AC-003.14). Each capture log line also records the prompt and completion tokens the endpoint reports (`usage`), so the daily cost can be computed. | Tests with a fake clock, low caps and parallel captures; daily call and token totals from the log file |
-| NFR-013 | Scalability, production (added 2026-10-10) | With a DB seeded with 1,000 players, 100,000 card instances and 10,000 offers, `GET /api/binder`, `GET /api/inbox`, `GET /api/daily-pack` and `POST /api/trades` have server-side p95 ≤ 500 ms, and 5 parallel captures against a stub model give no 5xx [ASSUMPTION A-12]. | Load script against a seeded DB (T-017) |
+| NFR-013 | Scalability, production (added 2026-10-10) | With a DB seeded with 1,000 players, 100,000 card instances and 10,000 offers, `GET /api/binder`, `GET /api/inbox`, `GET /api/daily-pack` (once REQ-011 is built) and `POST /api/trades` have server-side p95 ≤ 500 ms, and 5 parallel captures against a stub model give no 5xx [ASSUMPTION A-12]. | Load script against a seeded DB (T-017) |
 | NFR-014 | Backups, production (added 2026-10-10) | The daily DB backup is also copied off the Droplet, encrypted (it holds secret hashes), kept 7 days, RPO ≤ 24 h; the mechanism uses a credential limited to one bucket or a pull from outside the Droplet (design § Security, T-017); a restore is tested once before the public launch. | Restore drill, documented in the runbook |
 | NFR-015 | Cost, production (added 2026-10-10) | ≤ $50/month total in steady state (app Droplet + Volume ≈ $13, inference at the default cap ≈ $30, off-box backup storage ≈ $5 to be confirmed); no GPU resources in steady state [ASSUMPTION A-13]. | DigitalOcean billing, monthly |
 
