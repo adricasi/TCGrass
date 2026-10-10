@@ -364,6 +364,19 @@ describe("players service", () => {
 });
 
 describe("SlidingWindowLimiter", () => {
+  it("AC-008.4 reports a used-up key as blocked without recording a hit", () => {
+    let now = 0;
+    const limiter = new SlidingWindowLimiter(2, 100, () => now);
+    expect(limiter.blocked("a")).toBe(false);
+    limiter.tryHit("a");
+    expect(limiter.blocked("a")).toBe(false);
+    limiter.tryHit("a");
+    expect(limiter.blocked("a")).toBe(true);
+    expect(limiter.blocked("b")).toBe(false);
+    now = 100;
+    expect(limiter.blocked("a")).toBe(false);
+  });
+
   it("NFR-005 prunes idle keys at most once per tenth of the window", () => {
     let now = 0;
     const limiter = new SlidingWindowLimiter(1, 100, () => now);

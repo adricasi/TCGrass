@@ -32,10 +32,7 @@ export class SlidingWindowLimiter {
     if (now - this.#lastPrune >= this.#pruneIntervalMs) {
       this.#prune(now);
     }
-    const overflow = !this.#hits.has(key) && this.#hits.size >= this.maxKeys;
-    const bucket = overflow ? OVERFLOW_KEY : key;
-    const limit = overflow ? this.overflowLimit : this.limit;
-    const recent = (this.#hits.get(bucket) ?? []).filter((time) => now - time < this.windowMs);
+    const { bucket, limit, recent } = this.#window(key, now);
     if (recent.length >= limit) {
       this.#hits.set(bucket, recent);
       return false;
@@ -43,6 +40,23 @@ export class SlidingWindowLimiter {
     recent.push(now);
     this.#hits.set(bucket, recent);
     return true;
+  }
+
+  /** True if `key` has used up its window, without recording a hit. */
+  blocked(key: string): boolean {
+    const { limit, recent } = this.#window(key, this.now());
+    return recent.length >= limit;
+  }
+
+  /** The bucket a key counts against (its own, or the shared overflow) and its live hits. */
+  #window(key: string, now: number): { bucket: string; limit: number; recent: number[] } {
+    const overflow = !this.#hits.has(key) && this.#hits.size >= this.maxKeys;
+    const bucket = overflow ? OVERFLOW_KEY : key;
+    return {
+      bucket,
+      limit: overflow ? this.overflowLimit : this.limit,
+      recent: (this.#hits.get(bucket) ?? []).filter((time) => now - time < this.windowMs),
+    };
   }
 
   get trackedKeys(): number {

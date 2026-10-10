@@ -1,21 +1,25 @@
-export type Tab = "capture" | "binder" | "odds";
+export type Tab = "capture" | "binder" | "friends" | "inbox" | "odds";
 
-const TABS: { id: Tab; label: string }[] = [
+const TABS: { id: Exclude<Tab, "odds">; label: string }[] = [
   { id: "capture", label: "Capture" },
   { id: "binder", label: "Binder" },
-  { id: "odds", label: "Odds" },
+  { id: "friends", label: "Friends" },
+  { id: "inbox", label: "Inbox" },
 ];
 
-/** Bottom navigation. Friends and Inbox join it with T-007 and T-008. */
+/** Bottom navigation (Capture · Binder · Friends · Inbox); odds open from the binder. */
 export function Nav({
   current,
   onChange,
   disabled,
+  inboxCount,
 }: {
   current: Tab;
   onChange: (tab: Tab) => void;
   /** While a capture is in flight or its reveal is open (AC-006.1). */
   disabled: boolean;
+  /** Items waiting in the inbox (AC-008.6, AC-010.1). */
+  inboxCount: number;
 }) {
   return (
     <nav class="bottom-nav" aria-label="Main">
@@ -30,6 +34,11 @@ export function Nav({
           }}
         >
           {tab.label}
+          {tab.id === "inbox" && inboxCount > 0 && (
+            <span class="badge" aria-label={`${inboxCount} waiting`}>
+              {inboxCount}
+            </span>
+          )}
         </button>
       ))}
     </nav>

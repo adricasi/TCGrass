@@ -357,3 +357,85 @@ main {
   padding: 8px;
   text-align: left;
 }
+
+/* Friends and inbox (REQ-008) */
+.badge {
+  display: inline-block;
+  min-width: 1.4em;
+  margin-left: 4px;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: #c0392b;
+  color: #fff;
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+
+.friend-code {
+  font-family: ui-monospace, monospace;
+  letter-spacing: 0.08em;
+}
+
+.profile,
+.add-friend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.add-friend label {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 100%;
+}
+
+.add-friend input {
+  padding: 10px;
+  font-family: ui-monospace, monospace;
+  font-size: 1.1rem;
+  text-transform: uppercase;
+}
+
+.friend-list,
+.requests {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 0;
+  list-style: none;
+}
+
+.friend-list button {
+  width: 100%;
+  padding: 12px;
+  font-size: 1rem;
+  text-align: left;
+}
+
+.requests li {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.instance-art {
+  width: 48px;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  border-radius: 4px;
+}
+
+.instance.unavailable {
+  opacity: 0.55;
+}
+
+.link {
+  padding: 0;
+  background: none;
+  border: none;
+  color: inherit;
+  text-decoration: underline;
+}

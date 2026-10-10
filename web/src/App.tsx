@@ -2,7 +2,10 @@ import { useEffect, useState } from "preact/hooks";
 
 import { Binder } from "./Binder.js";
 import { Capture } from "./Capture.js";
+import { getInbox } from "./api.js";
 import { FirstRun } from "./FirstRun.js";
+import { Friends } from "./Friends.js";
+import { Inbox } from "./Inbox.js";
 import { Nav, type Tab } from "./Nav.js";
 import { Odds } from "./Odds.js";
 import {
@@ -29,6 +32,32 @@ export function App() {
   const [session, setSession] = useState<Session | "loading">("loading");
   const [tab, setTab] = useState<Tab>("capture");
   const [captureLocked, setCaptureLocked] = useState(false);
+  const [inboxCount, setInboxCount] = useState(0);
+  const secret = session !== "loading" && session.kind === "ready" ? session.secret : null;
+
+  function refreshInbox(): void {
+    if (secret === null) {
+      return;
+    }
+    getInbox(secret)
+      .then((inbox) => {
+        setInboxCount(inbox.counts.total);
+      })
+      .catch(() => undefined);
+  }
+
+  // The inbox badge is polled every 20 s (design § Interfaces). refreshInbox reads only
+  // `secret`, so `[secret]` is the full dependency list.
+  useEffect(() => {
+    if (secret === null) {
+      return;
+    }
+    refreshInbox();
+    const timer = window.setInterval(refreshInbox, 20_000);
+    return () => {
+      window.clearInterval(timer);
+    };
+  }, [secret]);
 
   useEffect(() => {
     void resumeSession(store).then(setSession);
@@ -93,9 +122,23 @@ export function App() {
           onLockedChange={setCaptureLocked}
         />
       )}
-      {tab === "binder" && <Binder secret={session.secret} onUnauthenticated={notFound} />}
+      {tab === "binder" && (
+        <Binder
+          secret={session.secret}
+          onUnauthenticated={notFound}
+          onShowOdds={() => {
+            setTab("odds");
+          }}
+        />
+      )}
+      {tab === "friends" && (
+        <Friends secret={session.secret} player={session.player} onUnauthenticated={notFound} />
+      )}
+      {tab === "inbox" && (
+        <Inbox secret={session.secret} onChanged={refreshInbox} onUnauthenticated={notFound} />
+      )}
       {tab === "odds" && <Odds />}
-      <Nav current={tab} onChange={setTab} disabled={captureLocked} />
+      <Nav current={tab} onChange={setTab} disabled={captureLocked} inboxCount={inboxCount} />
     </>
   );
 }
