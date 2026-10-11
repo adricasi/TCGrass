@@ -33,6 +33,9 @@ at `https://<PUBLIC_HOSTNAME>`. Tick each box per phone; note any failure in
 - [ ] `sudo ls -l ${DATA_DIR}/backups/` on the Droplet shows today's `tcgrass-YYYY-MM-DD.db`
   (NFR-003), and `df -h ${DATA_DIR}` shows room for about 8 copies of the DB.
 - [ ] `CAPTURE_COOLDOWN_HOURS` in `.env` is the value chosen for the test (product.md Q-12).
+- [ ] DO console: a **Volume snapshot** taken before the test (the only copy off the live
+  Volume until T-017); a **billing alert** set; the Droplet's **monitoring** graphs show data.
+- [ ] The DO **Droplet Console** opens (your way in if your IP changes and SSH is blocked).
 
 ## During the test
 No redeploys (NFR-003). If something breaks, note the time and the phone; a config-only

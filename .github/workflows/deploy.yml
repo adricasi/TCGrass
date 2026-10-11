@@ -8,9 +8,10 @@ name: deploy
 #   agent notices within a minute and deploys it by digest. GitHub never connects to the Droplet.
 # Rollback: "Run workflow" with an older commit of main. During the field test: don't run it.
 #
-# The registry secrets are REPOSITORY secrets here, because GitHub Free has no environment
+# The DO token (DO_REGISTRY_TOKEN) is a REPOSITORY secret here, because GitHub Free has no environment
 # secrets or required reviewers for private repositories. Before making the repository public,
 # switch back to environment secrets with a required reviewer (docs/deploy.md § 2e).
+# DO_REGISTRY_USERNAME is no longer used.
 
 on:
   push:
@@ -35,18 +36,49 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      # Private mode only (repository secrets, manual release). If the repository is made public,
+      # stop until the environment-gated workflow replaces this one (docs/deploy.md § 2e).
+      - name: Refuse to run in a public repository
+        env:
+          REPO_PRIVATE: ${{ github.event.repository.private }}
+        run: |
+          if [[ "$REPO_PRIVATE" != "true" ]]; then
+            echo "deploy.yml is in private mode but the repository is public: switch to the environment-gated workflow first" >&2
+            exit 1
+          fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-      - name: Log in to DigitalOcean Container Registry
+      # doctl comes from the official release, checked against a fixed checksum; the DO token
+      # stays out of any config file. `doctl registry login` reads it from the environment and stores
+      # registry credentials that expire in 25 minutes (longer than the job's 20-minute timeout,
+      # since BuildKit authenticates again at push time), so nothing long-lived lands on the runner.
+      - name: Install doctl (checksum-verified)
         env:
-          DO_REGISTRY_USERNAME: ${{ secrets.DO_REGISTRY_USERNAME }}
-          DO_REGISTRY_TOKEN: ${{ secrets.DO_REGISTRY_TOKEN }}
-        run: echo "$DO_REGISTRY_TOKEN" | docker login "$REGISTRY" -u "$DO_REGISTRY_USERNAME" --password-stdin
+          DOCTL_VERSION: 1.175.0
+          # From doctl-1.175.0-checksums.sha256 of the official release; the job stops here if the
+          # download differs, before the DO token is used. Bump both together.
+          DOCTL_SHA256: c722a6d48fab51a5edf6926e1ddc07ed58481184cad19e187ed39a2c0dc297f4
+        run: |
+          archive="$RUNNER_TEMP/doctl.tar.gz"
+          curl -fsSL --max-time 60 -o "$archive" \
+            "https://github.com/digitalocean/doctl/releases/download/v$DOCTL_VERSION/doctl-$DOCTL_VERSION-linux-amd64.tar.gz"
+          echo "$DOCTL_SHA256  $archive" | sha256sum -c -
+          install -d "$RUNNER_TEMP/bin"
+          tar -xzf "$archive" -C "$RUNNER_TEMP/bin" doctl
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      - name: Log in to DigitalOcean Container Registry (short-lived)
+        env:
+          DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DO_REGISTRY_TOKEN }}
+        run: doctl registry login --expiry-seconds 1500
       # Attestations need the docker-container driver; the result is an OCI index, which the
       # Droplet's agent resolves to a digest.
       - name: Set up the image builder
-        run: docker buildx create --name release --driver docker-container --use
+        # BuildKit pinned by version and digest: it builds the production image and receives the
+        # push credentials, so it must not be a moving tag.
+        run: >-
+          docker buildx create --name release --driver docker-container --use
+          --driver-opt image=moby/buildkit:v0.33.1@sha256:cec9f139f45e93c5c69c60f8b07cfad9f43f4ef6b6a6cd917527fea5ff2e3dea
       - name: Build and push sha-${{ github.sha }}
         run: >-
           docker buildx build --pull --push
@@ -69,6 +101,16 @@ jobs:
       group: release-prod
       cancel-in-progress: false
     steps:
+      # Private mode only (repository secrets, manual release). If the repository is made public,
+      # stop until the environment-gated workflow replaces this one (docs/deploy.md § 2e).
+      - name: Refuse to run in a public repository
+        env:
+          REPO_PRIVATE: ${{ github.event.repository.private }}
+        run: |
+          if [[ "$REPO_PRIVATE" != "true" ]]; then
+            echo "deploy.yml is in private mode but the repository is public: switch to the environment-gated workflow first" >&2
+            exit 1
+          fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
@@ -88,11 +130,27 @@ jobs:
             exit 1
           fi
           echo "sha=$commit" >> "$GITHUB_OUTPUT"
-      - name: Log in to DigitalOcean Container Registry
+      # doctl comes from the official release, checked against a fixed checksum; the DO token
+      # stays out of any config file. `doctl registry login` reads it from the environment and stores
+      # registry credentials that expire in 15 minutes, so nothing long-lived lands on the runner.
+      - name: Install doctl (checksum-verified)
         env:
-          DO_REGISTRY_USERNAME: ${{ secrets.DO_REGISTRY_USERNAME }}
-          DO_REGISTRY_TOKEN: ${{ secrets.DO_REGISTRY_TOKEN }}
-        run: echo "$DO_REGISTRY_TOKEN" | docker login "$REGISTRY" -u "$DO_REGISTRY_USERNAME" --password-stdin
+          DOCTL_VERSION: 1.175.0
+          # From doctl-1.175.0-checksums.sha256 of the official release; the job stops here if the
+          # download differs, before the DO token is used. Bump both together.
+          DOCTL_SHA256: c722a6d48fab51a5edf6926e1ddc07ed58481184cad19e187ed39a2c0dc297f4
+        run: |
+          archive="$RUNNER_TEMP/doctl.tar.gz"
+          curl -fsSL --max-time 60 -o "$archive" \
+            "https://github.com/digitalocean/doctl/releases/download/v$DOCTL_VERSION/doctl-$DOCTL_VERSION-linux-amd64.tar.gz"
+          echo "$DOCTL_SHA256  $archive" | sha256sum -c -
+          install -d "$RUNNER_TEMP/bin"
+          tar -xzf "$archive" -C "$RUNNER_TEMP/bin" doctl
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
+      - name: Log in to DigitalOcean Container Registry (short-lived)
+        env:
+          DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DO_REGISTRY_TOKEN }}
+        run: doctl registry login --expiry-seconds 900
       - name: Point :prod at sha-${{ steps.commit.outputs.sha }}
         env:
           SHA: ${{ steps.commit.outputs.sha }}
