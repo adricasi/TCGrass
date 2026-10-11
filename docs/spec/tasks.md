@@ -141,6 +141,8 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
     truncated to 140 before storing; messages for none/screen/retry.
   - Done when: tests for AC-003.5–003.7, 003.11, AC-004.1–004.3, AC-005.1–005.3,
     AC-006.1–006.5 pass; a photo on the phone produces a revealed card stored in the DB.
+  - Audit (2026-10-11): every AC above has a named test; AC-006.5 was the last one, added as a
+    jsdom component test (`test/ui/capture-reveal.test.tsx`). Waiting on 👤: phone check.
 
 - [x] T-016: Daily model-call caps (added 2026-10-10, ADR 0006)
   - Estimate: 0.75 h
@@ -177,6 +179,8 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
     inbox list of friend requests.
   - Done when: tests for AC-008.1–008.9 pass; two phones become friends and see each other's
     binders.
+  - Audit (2026-10-11): every AC above has a named test; AC-008.1 was the last one
+    (`test/ui/profile.test.tsx`). Waiting on 👤: two-phone check.
 
 - [x] T-008: Trade offers: create, cancel, sent list
   - Estimate: 0.75 h
@@ -273,7 +277,7 @@ challenge*; this milestone replaces it.
     kept per AC-007.1, error-text and input-border contrast, licence notices).
 
 ## Milestone 5: Field test and ship (Sat 10-10 – Sun 10-11)
-- [~] T-023: Releases through DOCR pulled by the Droplet (added 2026-10-11, ADR 0008)
+- [x] T-023: Releases through DOCR pulled by the Droplet (added 2026-10-11, ADR 0008)
   - Estimate: ~2 h agent + ~30 min human
   - Requirements: NFR-001, NFR-003, NFR-011
   - Depends on: T-002b (Droplet created by hand)
@@ -286,6 +290,11 @@ challenge*; this milestone replaces it.
     new digest → pull by digest, seed, up, record; failed seed → nothing restarted; failed up →
     rollback to the previous release and skip the failed one); 👤 an approved
     release runs on the Droplet; then the T-002b checks (phone oak test, `curl -I` redirect).
+  - Result (2026-10-11): done. The 12 agent tests in `test/deploy/agent.test.ts` pass; the
+    reviewed `deploy.yml` and the action pins are in `.github/workflows/` (PR #25); the first
+    approved release was deployed by the Droplet agent and serves
+    https://143.198.251.237.sslip.io/ (T-002b closed). Open 👤 housekeeping, not in Done when:
+    delete the unused `DO_REGISTRY_USERNAME` secret.
 
 - [~] T-011: Pre-field-test hardening
   - Estimate: 0.5 h

@@ -17,5 +17,6 @@
     "sourceMap": true,
     "outDir": "dist"
   },
-  "include": ["src", "test", "scripts", "*.ts"]
+  "include": ["src", "test", "scripts", "*.ts"],
+  "exclude": ["test/ui"]
 }
