@@ -2,6 +2,7 @@ import { useEffect, useState } from "preact/hooks";
 
 import type { TradeCard } from "../../src/shared/schemas/trades.js";
 import { ApiError, createTradeOffer, getBinder } from "./api.js";
+import { Icon } from "./Icon.js";
 import { type OfferableCard, offerableCards } from "./trade-view.js";
 import { rarityPresentation } from "./rarity.js";
 
@@ -74,7 +75,8 @@ export function TradePicker({
           onDone(null);
         }}
       >
-        ← Back
+        <Icon name="back" size={20} />
+        Back
       </button>
       <h2>Trade for {friendName}'s card</h2>
       <p class={`instance ${wantedRarity.frameClass}`}>
@@ -84,7 +86,7 @@ export function TradePicker({
       </p>
       <h3>Offer one of yours</h3>
       {mine === null && message === null && <p>Loading your cards…</p>}
-      {mine !== null && mine.length === 0 && <p>You have no cards free to offer.</p>}
+      {mine !== null && mine.length === 0 && <p class="empty">You have no cards free to offer.</p>}
       <ul class="instances">
         {mine?.map((card) => {
           const rarity = rarityPresentation(card.rarity);

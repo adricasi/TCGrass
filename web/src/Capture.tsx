@@ -9,6 +9,7 @@ import {
   SLOW_CAPTURE_MS,
   SLOW_CAPTURE_TEXT,
 } from "./capture-messages.js";
+import { Icon } from "./Icon.js";
 import { Reveal } from "./Reveal.js";
 
 type CameraState = "starting" | "ready" | "denied" | "busy-elsewhere" | "insecure" | "unavailable";
@@ -177,13 +178,17 @@ export function Capture({
 
   return (
     <section class="capture">
-      <video ref={videoRef} class="preview" autoplay playsInline muted />
+      <div class="viewfinder">
+        <video ref={videoRef} class="preview" autoplay playsInline muted />
+      </div>
+      <p class="capture-hint">Find a flower, a tree or an animal</p>
       <button
         type="button"
         class="shutter"
         disabled={camera !== "ready" || busy || revealed !== null}
         onClick={() => void takePhoto()}
       >
+        {!busy && <Icon name="camera" />}
         {busy ? (slow ? SLOW_CAPTURE_TEXT : "Looking…") : "Capture"}
       </button>
       <p class="result" aria-live="polite">

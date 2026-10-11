@@ -65,7 +65,7 @@ capture can take a moment.
 ## Components
 | Component | Responsibility | Tech / service | Requirements |
 |---|---|---|---|
-| PWA (`web/`) | First-run notice + name, camera capture + downscale, reveal with entry animation (CSS keyframes in the bundled stylesheet, no animation library, reduced-motion respected), cooldown message, binder, odds, friends, inbox (polling), trades | Vite, Preact, TypeScript; hand-written manifest + app-shell service worker (`web/public/`) | REQ-002, 003, 005–010, 013, 014 (011 deferred) |
+| PWA (`web/`) | First-run notice + name, camera capture + downscale, reveal with entry animation (CSS keyframes in the bundled stylesheet, no animation library, reduced-motion respected), Field Journal look (ADR 0009: self-hosted OFL fonts, inline Lucide icons, `docs/design/style-guide.md`), cooldown message, binder, odds, friends, inbox (polling), trades | Vite, Preact, TypeScript; hand-written manifest + app-shell service worker (`web/public/`) | REQ-002, 003, 005–010, 013, 014 (011 deferred) |
 | Shared schemas (`src/shared/`) | zod schemas + types for API requests/responses and the expansion file | zod | NFR-001 |
 | API (`src/server/`) | HTTP routes, auth middleware, rate limits, security headers (set here only, not in Caddy), static files | Hono + `@hono/node-server` on Node.js LTS (`engines` ≥ 22; Docker image uses the current LTS) | all REQ |
 | Identification (`src/server/identify/`) | Build the prompt from the catalogue, call the endpoint with a 30-s timeout, at most 5 calls in flight (AC-003.12), validate the answer | OpenAI-compatible HTTP via `fetch` + `AbortSignal.timeout` | REQ-003, 004, 012 |

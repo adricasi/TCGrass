@@ -67,14 +67,17 @@ async function networkFirstShell(request) {
 }
 
 // Each deploy fingerprints new /assets; drop the ones the current shell no longer references
-// so the cache doesn't grow with every deploy. (A chunk loaded only from JS would be dropped
-// too and simply fetched again; the build has none today.)
+// so the cache doesn't grow with every deploy. Fonts are kept: only the stylesheet names them,
+// and they rarely change (T-024). (A chunk loaded only from JS would be dropped too and simply
+// fetched again; the build has none today.)
 async function pruneAssets(cache, html) {
   const requests = await cache.keys();
   await Promise.all(
     requests
       .map((cached) => new URL(cached.url).pathname)
-      .filter((path) => path.startsWith("/assets/") && !html.includes(path))
+      .filter(
+        (path) => path.startsWith("/assets/") && !path.endsWith(".woff2") && !html.includes(path),
+      )
       .map((path) => cache.delete(path)),
   );
 }

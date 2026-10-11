@@ -3,6 +3,7 @@ import "./style.css";
 import { render } from "preact";
 
 import { App } from "./App.js";
+import { Icon } from "./Icon.js";
 import { registerServiceWorker } from "./register-sw.js";
 
 const root = document.getElementById("app");
@@ -11,7 +12,11 @@ if (root === null) {
 }
 render(
   <main>
-    <h1>TCGrass</h1>
+    <header class="masthead">
+      <Icon name="leaf" size={28} />
+      <h1 class="wordmark">TCGrass</h1>
+      <span class="masthead-note">field journal</span>
+    </header>
     <App />
   </main>,
   root,

@@ -45,3 +45,13 @@ export function formatCaptureDate(iso: string, locale?: string): string {
     year: "numeric",
   });
 }
+
+/** "Nº 06": a card's place in the expansion file, which is the binder order (REQ-007). */
+export function catalogueNumber(index: number): string {
+  return `Nº ${String(index + 1).padStart(2, "0")}`;
+}
+
+/** The rarest rarity the player owns of a card, which picks its binder frame; null if missing. */
+export function rarestOwned(counts: Record<Rarity, number>): Rarity | null {
+  return [...RARITIES].reverse().find((rarity) => counts[rarity] > 0) ?? null;
+}

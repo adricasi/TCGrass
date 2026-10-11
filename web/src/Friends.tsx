@@ -102,7 +102,7 @@ export function Friends({
       )}
       {friends === null && !failed && <p>Loading…</p>}
       {friends !== null && friends.length === 0 && (
-        <p>No friends yet. Share your code, or add a friend's.</p>
+        <p class="empty">No friends yet. Share your code, or add a friend's.</p>
       )}
       <ul class="friend-list">
         {friends?.map((friend) => (

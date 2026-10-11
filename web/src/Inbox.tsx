@@ -3,6 +3,7 @@ import { useState } from "preact/hooks";
 import type { InboxResponse } from "../../src/shared/schemas/friends.js";
 import type { IncomingOffer } from "../../src/shared/schemas/trades.js";
 import { answerFriendRequest, answerTradeOffer, ApiError } from "./api.js";
+import { Icon } from "./Icon.js";
 import { rarityPresentation } from "./rarity.js";
 import { SentOffers } from "./SentOffers.js";
 
@@ -79,7 +80,7 @@ export function Inbox({
       <p class="result" aria-live="polite">
         {message}
       </p>
-      {inbox.counts.total === 0 && <p>Nothing waiting for you.</p>}
+      {inbox.counts.total === 0 && <p class="empty">Nothing waiting for you.</p>}
       <ul class="requests">
         {inbox.tradeOffers.map((offer) => (
           <li key={`offer-${offer.id}`} class="offer">
@@ -90,13 +91,18 @@ export function Inbox({
             </span>
             <span class="offer-cards">
               <img class="instance-art" src={offer.offered.imageUrl} alt="" />
-              <span aria-hidden="true">⇄</span>
+              <Icon name="trade" size={20} />
               <img class="instance-art" src={offer.requested.imageUrl} alt="" />
             </span>
             <button type="button" disabled={busy} onClick={() => void answerOffer(offer, true)}>
               Accept
             </button>
-            <button type="button" disabled={busy} onClick={() => void answerOffer(offer, false)}>
+            <button
+              type="button"
+              class="secondary"
+              disabled={busy}
+              onClick={() => void answerOffer(offer, false)}
+            >
               Decline
             </button>
           </li>
@@ -115,6 +121,7 @@ export function Inbox({
             </button>
             <button
               type="button"
+              class="secondary"
               disabled={busy}
               onClick={() => void answerRequest(request.id, false)}
             >
