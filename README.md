@@ -2,6 +2,8 @@
 
 <img src="docs/images/cover.png" alt="TCGrass: photograph real plants and animals to earn illustrated cards, then trade them with friends" width="720">
 
+<img src="docs/images/qr.png" alt="QR code that opens TCGrass at tcgrass.duckdns.org. Scan it with your phone camera to play: free, no app store, no account" width="720">
+
 # TCGrass
 
 **A collectible card game you can only play outside.**
