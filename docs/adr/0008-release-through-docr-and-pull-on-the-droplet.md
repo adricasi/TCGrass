@@ -55,7 +55,11 @@ GitHub Free, environment secrets and required reviewers are unavailable (GitHub 
 secrets, builds run on every push to `main`, and a release runs only when the operator
 triggers `deploy` by hand on `main` (the click is the approval); the release job accepts only
 commits on `main` with an existing image. Before the repository is made public, it switches to
-the environment-gated mode above.
+the environment-gated mode above. In this mode the manual trigger is enforced only by the
+workflow on `main`: anyone with write access could push a branch whose workflow reads the
+repository secrets and moves `:prod`, and GitHub Free private repositories enforce neither
+branch protection nor `CODEOWNERS`. The control is that the owner is the only collaborator
+with write access (security review, 2026-10-11).
 
 ## Consequences
 - Positive: no SSH key or firewall-capable token in GitHub; port 22 stays limited to the
