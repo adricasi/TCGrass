@@ -114,8 +114,10 @@ environment secrets or required reviewers for private repositories, so the workf
 - [ ] **Repository secret** (same page → Secrets): `DO_REGISTRY_TOKEN`, a DO API token with
   only `registry:read` + `registry:update` (the scopes DO's API reference lists for
   `/v2/registry/docker-credentials`) and an expiry date. The workflow passes it to
-  `doctl registry login --expiry-seconds` (DigitalOcean's `action-doctl`, `no_auth`, token from
-  the environment), which stores registry credentials that expire in 15–25 minutes. Each login
+  `doctl registry login --expiry-seconds` (a pinned `doctl` from the official release, checked
+  against a fixed SHA-256 in the workflow; token from the environment), which stores registry
+  credentials that expire in 15–25 minutes. To bump `doctl`, update `DOCTL_VERSION` and
+  `DOCTL_SHA256` together, from that release's `checksums.sha256` file. Each login
   creates a short-lived token that shows up under **API → Tokens** until it expires; that is
   expected. `DO_REGISTRY_USERNAME` is no longer needed (delete it). In a private repository only
   collaborators (you) can run workflows that read it; **keep it that way** (no other

@@ -62,9 +62,10 @@ branch protection nor `CODEOWNERS`. The control is that the owner is the only co
 with write access (security review, 2026-10-11).
 
 **Registry credentials in CI (2026-10-11, end-to-end review).** The workflow never runs
-`docker login` with the DO token. DigitalOcean's `action-doctl` (pinned, `no_auth`) installs a
-pinned `doctl`, and `doctl registry login --expiry-seconds` (token from the environment, never
-in a config file) stores registry credentials that expire in 25 minutes (build) or 15 minutes
+`docker login` with the DO token. A pinned `doctl` is downloaded from the official release and
+checked against a SHA-256 fixed in the workflow (the job stops before the token is used if it
+differs; `digitalocean/action-doctl` was rejected because it doesn't verify its download), and
+`doctl registry login --expiry-seconds` (token from the environment, never in a config file) stores registry credentials that expire in 25 minutes (build) or 15 minutes
 (release); `docker logout` removes them at the end. BuildKit is pinned
 by version and digest. In private mode the workflow refuses to run if the repository is public.
 
