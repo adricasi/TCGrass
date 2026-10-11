@@ -1,8 +1,14 @@
 {
   "name": "tcgrass",
   "version": "0.1.0",
-  "private": true,
   "description": "Collectible card game: photograph real things to earn illustrated cards, then trade with friends.",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/adricasi/TCGrass.git"
+  },
+  "homepage": "https://tcgrass.duckdns.org/",
+  "private": true,
   "type": "module",
   "engines": {
     "node": ">=22.12"

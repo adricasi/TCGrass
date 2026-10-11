@@ -16,6 +16,8 @@ RUN npm ci && node -e "require('better-sqlite3')(':memory:').close()"
 COPY tsconfig.json tsconfig.build.json ./
 COPY src ./src
 COPY web ./web
+# Origin for link previews and the canonical URL (web/public-url.ts); blank = tcgrass.duckdns.org.
+ARG PUBLIC_URL=""
 RUN npm run build && npm prune --omit=dev
 
 FROM node:24-bookworm-slim@sha256:d6aa754f16b3197301076f047b5def2f02ea1dbbc2ca920407d46d7ec7f87b20

@@ -12,7 +12,11 @@ x-logging: &logging
 
 services:
   api:
-    build: .
+    build:
+      context: .
+      # Origin baked into link previews at build time (README § Configuration).
+      args:
+        PUBLIC_URL: ${PUBLIC_URL:-}
     # Local: built from source (`--build`). Production: the release the deploy agent pins by
     # digest (API_IMAGE, ADR 0008); use `tcgrass-compose` on the Droplet for manual commands.
     image: ${API_IMAGE:-tcgrass-api}
