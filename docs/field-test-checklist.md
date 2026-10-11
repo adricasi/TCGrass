@@ -36,4 +36,4 @@ at `https://<PUBLIC_HOSTNAME>`. Tick each box per phone; note any failure in
 
 ## During the test
 No redeploys (NFR-003). If something breaks, note the time and the phone; a config-only
-restart (`docker compose up -d api`) is the only allowed change.
+restart (`tcgrass-compose up -d api` in `/opt/tcgrass`) is the only allowed change; don't run a release.

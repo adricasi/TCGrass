@@ -239,6 +239,20 @@ challenge*; this milestone replaces it.
     screenshots saved for the post.
 
 ## Milestone 5: Field test and ship (Sat 10-10 – Sun 10-11)
+- [~] T-023: Releases through DOCR pulled by the Droplet (added 2026-10-11, ADR 0008)
+  - Estimate: ~2 h agent + ~30 min human
+  - Requirements: NFR-001, NFR-003, NFR-011
+  - Depends on: T-002b (Droplet created by hand)
+  - Scope: `deploy/droplet/` (`setup.sh`, `tcgrass-deploy` agent, systemd units, optional
+    `harden-ssh.sh`); `compose.yaml` `API_IMAGE`; `deploy.yml` (build + push to DOCR, approved
+    promotion) and a `ci-node.yml` patch in `.reviews/` for the author (agents can't edit
+    `.github/workflows/`); runbook. 👤 push token, read-only Droplet credentials, GitHub
+    environments, `setup.sh`, `.env`, first approval.
+  - Done when: agent tests pass (no `.env` → wait; no Volume → refuse; same digest → no-op;
+    new digest → pull by digest, seed, up, record; failed seed → nothing restarted; failed up →
+    rollback to the previous release and skip the failed one); 👤 an approved
+    release runs on the Droplet; then the T-002b checks (phone oak test, `curl -I` redirect).
+
 - [~] T-011: Pre-field-test hardening
   - Estimate: 0.5 h
   - Requirements: NFR-001, NFR-002, NFR-003, NFR-005, NFR-010

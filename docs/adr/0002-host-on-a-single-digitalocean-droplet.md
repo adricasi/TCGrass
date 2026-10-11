@@ -1,6 +1,7 @@
 # 0002. Host on a single DigitalOcean Droplet with Docker Compose
 
-- Status: Accepted (2026-10-08)
+- Status: Accepted (2026-10-08); releases amended by
+  [ADR 0008](0008-release-through-docr-and-pull-on-the-droplet.md) (2026-10-11)
 - Date: 2026-10-07
 - Deciders: adricasi
 

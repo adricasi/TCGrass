@@ -1,0 +1,6 @@
+# Changes to CI/CD and deployment need the owner's review (ADR 0008).
+/.github/ @adricasi
+/deploy/ @adricasi
+/compose.yaml @adricasi
+/Caddyfile @adricasi
+/Dockerfile @adricasi

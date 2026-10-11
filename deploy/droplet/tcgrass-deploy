@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+# Pull-based deploy agent (ADR 0008), run every minute by tcgrass-deploy.timer as root.
+#
+# GitHub Actions points <IMAGE_REPO>:prod at a new image only after the operator approves a
+# release. This script resolves that tag to a digest; when the digest changes it pulls the image
+# BY DIGEST (read-only registry credentials), seeds the expansion, restarts the stack and records
+# the release only once the stack is healthy. compose.yaml and the Caddyfile in APP_DIR were
+# installed by setup.sh and never come from the image. No inbound connection, no CI credentials.
+#
+# Settings (from /etc/tcgrass/deploy.env): IMAGE_REPO, APP_DIR, MOUNT_POINT, RELEASE_TAG (prod).
+set -euo pipefail
+
+: "${IMAGE_REPO:?}" "${APP_DIR:?}" "${MOUNT_POINT:?}"
+release_tag="${RELEASE_TAG:-prod}"
+cd "$APP_DIR"
+
+# Containers must not reach the metadata service. tcgrass-metadata-block.service sets this rule
+# before Docker starts; this only restores it if something removed it.
+if ! iptables -t raw -C PREROUTING -d 169.254.169.254/32 -j DROP 2>/dev/null; then
+  echo "metadata-service block missing; restoring it" >&2
+  iptables -t raw -I PREROUTING -d 169.254.169.254/32 -j DROP
+fi
+
+if [[ ! -f .env ]]; then
+  echo "waiting for $APP_DIR/.env (written once by the operator, docs/deploy.md)"
+  exit 0
+fi
+if ! mountpoint -q "$MOUNT_POINT"; then
+  echo "data volume is not mounted at $MOUNT_POINT; refusing to deploy without it" >&2
+  exit 1
+fi
+
+digest="$(docker buildx imagetools inspect "$IMAGE_REPO:$release_tag" --format '{{json .Manifest}}' |
+  jq -r '.digest' 2>/dev/null || true)"
+if [[ ! "$digest" =~ ^sha256:[0-9a-f]{64}$ ]]; then
+  echo "could not resolve $IMAGE_REPO:$release_tag to a digest" >&2
+  exit 1
+fi
+
+image="$IMAGE_REPO@$digest"
+previous="$(cat .deployed-image 2>/dev/null || true)"
+if [[ "$previous" == "$image" ]]; then
+  exit 0
+fi
+# A release that failed its health check is not retried until :prod points somewhere else (a
+# fix, or a rollback). To retry the same one on purpose: rm /opt/tcgrass/.failed-image.
+if [[ -f .failed-image && "$(cat .failed-image)" == "$image" ]]; then
+  echo "$image already failed its health check; still running ${previous:-nothing}"
+  exit 0
+fi
+echo "deploying $image"
+
+umask 077
+docker pull --quiet "$image" >/dev/null
+# The seed is idempotent (AC-001.5), applies the migrations (additive, AGENTS.md) and runs in
+# transactions. If it fails, nothing has been restarted yet and the next run tries again.
+API_IMAGE="$image" docker compose run --rm --no-deps api sh -c 'node dist/server/seed-cli.js "expansions/$ACTIVE_EXPANSION"'
+
+# --wait: only a healthy stack counts as deployed.
+if ! API_IMAGE="$image" docker compose up -d --no-build --remove-orphans --wait --wait-timeout 120; then
+  printf '%s\n' "$image" > .failed-image
+  echo "$image failed its health check" >&2
+  if [[ -n "$previous" ]]; then
+    echo "rolling back to $previous" >&2
+    API_IMAGE="$previous" docker compose up -d --no-build --remove-orphans --wait --wait-timeout 120 ||
+      echo "rollback to $previous also failed; check: tcgrass-compose logs api" >&2
+  fi
+  exit 1
+fi
+
+printf '%s\n' "$image" > .deployed-image.tmp
+mv .deployed-image.tmp .deployed-image
+rm -f .failed-image
+docker image prune -f >/dev/null
+echo "deployed $image"

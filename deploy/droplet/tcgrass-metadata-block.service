@@ -1,0 +1,19 @@
+[Unit]
+Description=Block containers from the DigitalOcean metadata service (ADR 0008)
+# Before Docker, so restart-policy containers never get a window to reach the metadata service.
+# The raw table sees container traffic in PREROUTING; the host's own requests (DO agents,
+# cloud-init) use OUTPUT and are not affected. Docker doesn't manage this table.
+DefaultDependencies=no
+Wants=network-pre.target
+After=network-pre.target
+Before=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/sh -c 'iptables -t raw -C PREROUTING -d 169.254.169.254/32 -j DROP 2>/dev/null || iptables -t raw -I PREROUTING -d 169.254.169.254/32 -j DROP'
+
+[Install]
+WantedBy=multi-user.target
+# Docker refuses to start if the block can't be installed (fails closed).
+RequiredBy=docker.service
