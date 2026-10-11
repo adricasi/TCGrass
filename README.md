@@ -268,7 +268,7 @@ Contributions are welcome: new decks, bug fixes, accessibility improvements and 
 [CONTRIBUTING.md](CONTRIBUTING.md) and the [Code of Conduct](CODE_OF_CONDUCT.md) first.
 
 ## License and credits
-- **Code:** [MIT](LICENSE) © 2026 adricasi.
+- **Code:** [MIT](LICENSE) © 2026 Adrià Casals Espax.
 - **Everyday Nature deck data:** Apache-2.0
   ([expansion.yaml](expansions/everyday-nature/expansion.yaml)).
 - **Card art:** AI-generated with the Gemini app (Google); see the expansion's `license.images`.
