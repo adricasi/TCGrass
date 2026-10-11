@@ -7,11 +7,23 @@ and deployment). **The human runs every command here**; agents only prepare them
 Self-hosting elsewhere: see "Fallback" and "Local run".
 
 ```
+                      DuckDNS: tcgrass.duckdns.org ─A─▶ Reserved IP
 phone ──HTTPS──▶ Caddy :443 (Let's Encrypt) ──HTTP──▶ api :3000 (not published)
                  :80 → 308 to HTTPS                  ├─ /api, /cards, PWA (dist/web)
                                                      ├─ SQLite + logs on ${DATA_DIR}
                                                      └─ HTTPS ─▶ INFERENCE_BASE_URL
 ```
+
+Production today: **https://tcgrass.duckdns.org/** on one Droplet in AMS3. The pieces, and why:
+
+| Piece | Choice | Why |
+|---|---|---|
+| Host | One DigitalOcean Droplet + Volume + Reserved IP | Cheapest setup that runs the whole stack; the Volume keeps the data, the Reserved IP keeps the address (ADR 0002) |
+| Domain | DuckDNS subdomain | Free, stable name; on the Public Suffix List, so its own Let's Encrypt limits ([§ Domain](#domain-duckdns)) |
+| HTTPS | Caddy | Gets and renews certificates by itself, redirects HTTP, HTTP/3, a 20-line config ([§ HTTPS](#https-caddy)) |
+| App | API container serving the PWA and `/api` | One image, one port, never exposed directly |
+| Releases | GitHub Actions → DOCR → pull agent on the Droplet | No inbound access for CI; you approve each release (ADR 0008) |
+| Inference | DO serverless Gemma (`gemma-4-31B-it`) | No GPU to run; capped per day (ADR 0006) |
 
 ## 1. Infrastructure (once, by hand, ADR 0002)
 In the DigitalOcean console, all in **AMS3**. Put every resource in a DO **Project**
@@ -34,20 +46,74 @@ In the DigitalOcean console, all in **AMS3**. Put every resource in a DO **Proje
 Install Docker Engine and the Compose plugin from Docker's apt repository
 (<https://docs.docker.com/engine/install/ubuntu/>) and check `docker compose version`.
 
-### Hostname
-Production (since 2026-10-11): `PUBLIC_HOSTNAME=tcgrass.duckdns.org`, a free DuckDNS name with
-an A record pointing at the Reserved IP. duckdns.org is on the Public Suffix List, so it doesn't
-share Let's Encrypt's limit with other users. The first deploy used
-`<reserved-ip-with-dashes>.sslip.io` (e.g. `203-0-113-7.sslip.io`), which still works for a
-quick start:
+## Domain and HTTPS (once)
+### Domain: DuckDNS
+**Why DuckDNS.** A phone only allows the camera on `https://`, and a certificate needs a hostname.
+[DuckDNS](https://www.duckdns.org/) gives a free subdomain with no domain to buy or renew.
+Unlike `sslip.io` or `nip.io` names (which encode the IP), `duckdns.org` is on the
+[Public Suffix List](https://publicsuffix.org/) (checked 2026-10-10), so Let's Encrypt counts
+certificates per subdomain: we don't share a rate limit with every other user of the service.
+The first deploy used `143.198.251.237.sslip.io`; issuance on such names can fail for that
+reason. An own domain later works the same way (an A record, or a CNAME to the DuckDNS name).
 
-**Check (2026-10-10): neither sslip.io nor nip.io is on the Public Suffix List.** Every user of
-either service shares Let's Encrypt's per-domain certificate limit, so issuance can fail. After
-the first release, run `tcgrass-compose logs caddy` in `/opt/tcgrass`:
-- `certificate obtained successfully`: done.
-- A `rateLimited` error: use a hostname under a domain that *is* on the list, such as a free
-  `<name>.duckdns.org` with an A record pointing at the Reserved IP. Then set `PUBLIC_HOSTNAME`
-  and run `tcgrass-compose up -d`.
+**Set it up (once):**
+1. Sign in at <https://www.duckdns.org/> (GitHub, Google and others), add the subdomain
+   (`tcgrass`) and set its **current ip** to the Droplet's **Reserved IP**. Update.
+2. The Reserved IP never changes, so no DuckDNS updater (cron or container) is needed. Keep
+   the account token private: it can repoint the name.
+3. Check from your laptop before the first release:
+   ```bash
+   dig +short tcgrass.duckdns.org          # must print the Reserved IP
+   ```
+4. In `/opt/tcgrass/.env`: `PUBLIC_HOSTNAME=tcgrass.duckdns.org` (§ 2c).
+
+DuckDNS serves only A/AAAA (and MX) records: no TXT, so Caddy uses the HTTP and TLS-ALPN
+challenges, not the DNS challenge. That's why ports 80 and 443 must stay open in the Cloud
+Firewall.
+
+### HTTPS: Caddy
+**Why Caddy.** It gets a Let's Encrypt certificate (ZeroSSL as a fallback) for the name in its
+config and renews it in the background, with no certbot or cron. It redirects HTTP to HTTPS,
+serves HTTP/2 and HTTP/3, and the whole config is the [`Caddyfile`](../Caddyfile) in this repo.
+Security headers are set by the API, not Caddy, so they are the same in every setup
+(design.md § Security design).
+
+**What the `Caddyfile` does:**
+- `{$PUBLIC_HOSTNAME}`: serves exactly that name, taken from `.env` through `compose.yaml`
+  (`localhost` gets Caddy's internal CA for local runs).
+- `request_body max_size 6MB`: an outer bound; the API enforces the exact photo limit.
+- `reverse_proxy api:3000`: everything goes to the API container, whose port is not published.
+  Caddy replaces any client-sent `X-Forwarded-For`, so `TRUST_PROXY=true` is safe behind it.
+- `encode zstd gzip`: compresses the JS bundle for phones on cellular.
+- `header -Server`: hides the server banner.
+
+**How the container runs** (`compose.yaml`): pinned by digest; ports 80, 443 and 443/udp;
+read-only filesystem, all capabilities dropped except `NET_BIND_SERVICE`, 128 MB memory
+limit; starts only once the API is healthy. Certificates and ACME account keys live in the
+`caddy_data` Docker volume, so they survive restarts and releases.
+
+**Requirements for the first certificate:** the A record points at the Reserved IP, TCP 80 and
+443 are open to the internet, and `PUBLIC_HOSTNAME` is set. After the first release:
+```bash
+cd /opt/tcgrass && tcgrass-compose logs caddy | grep -iE "certificate obtained|error"
+curl -sI http://tcgrass.duckdns.org/ | head -3     # 308 → https://tcgrass.duckdns.org/
+curl -s https://tcgrass.duckdns.org/healthz        # {"status":"ok"}
+```
+- `certificate obtained successfully`: done; renewals are automatic.
+- `rateLimited`, `NXDOMAIN` or `connection refused`: check `dig`, the firewall rules and that
+  nothing else listens on port 80. Caddy retries with back-off; fix the cause and run
+  `tcgrass-compose restart caddy`.
+
+### Changing the hostname
+The hostname is the web origin, and **players live in the browser per origin**: players created
+under the old name can't be reached from the new one, and installed home-screen apps keep
+opening the old name. Announce the change first. Then:
+1. Point the new name at the Reserved IP and check it with `dig`.
+2. Set `PUBLIC_HOSTNAME` in `/opt/tcgrass/.env` and run `tcgrass-compose up -d` (Compose
+   recreates Caddy with the new name; Caddy gets the new certificate on its own).
+3. Link previews and the canonical URL are baked into the image from `PUBLIC_URL`
+   (default `https://tcgrass.duckdns.org`, `web/public-url.ts`). CI builds without it, so
+   update `DEFAULT_PUBLIC_URL` there and release.
 
 ## 2. Prepare the Droplet for releases (once, ADR 0008)
 ### 2a. Read-only registry credentials
@@ -106,13 +172,17 @@ key and turns off root login and passwords. Keep the root session open until a s
 can `ssh <username>@<reserved-ip>` and `sudo -v`.
 
 ### 2e. GitHub (once)
+> **Current state (2026-10-11): releases are paused.** For the challenge the repository was made
+> public, so the registry secrets were deleted from GitHub, the DO token revoked and the
+> `deploy` workflow disabled. The live app keeps running. To release again, follow
+> [§ 5 → Restoring releases](#restoring-releases). The steps below describe the private mode
+> that was used until then.
+
 The repository is **private** for now (author decision, 2026-10-11). GitHub Free has no
 environment secrets or required reviewers for private repositories, so the workflow runs in
 *private mode*: repository secrets, and a release is a manual "Run workflow" on `main`.
 
-- [ ] **Workflows** (agents can't edit `.github/workflows/`): from the repository root,
-  `cp .reviews/workflows/deploy.yml .github/workflows/ && cp .reviews/CODEOWNERS .github/ &&
-  git apply .reviews/ci-node.patch`, then review and commit them yourself.
+- [x] **Workflows:** `deploy.yml` and `CODEOWNERS` are in `.github/` (done 2026-10-11, PR #25).
 - [ ] **Variable** (Settings → Secrets and variables → Actions → Variables):
   `DO_REGISTRY_NAME=tcgrass`.
 - [ ] **Repository secret** (same page → Secrets): `DO_REGISTRY_TOKEN`, a DO API token with
@@ -128,13 +198,17 @@ environment secrets or required reviewers for private repositories, so the workf
   collaborators with write access). The workflow refuses to run if the repository is public.
 - [ ] **Branch protection** on `main` if your plan offers it for private repositories.
 
-**Before making the repository public**, switch to the reviewed public mode: environments
+**Before making the repository public** (it must be public for the challenge submission),
+switch to the reviewed public mode. Until then **`deploy.yml` refuses to run** in a public
+repository, so no release can be made; the running app is not affected. Public mode: environments
 `registry` and `production` (both limited to `main`; you as required reviewer on
 `production`), the two secrets moved into both environments and deleted at repository level,
 the environment-gated workflow (ask for it, ADR 0008), branch protection and `CODEOWNERS`
 review. Repository secrets in a public repository could be targeted by pull requests.
 
 ## 3. Release (ADR 0008)
+Paused since 2026-10-11 (see § 2e); this is how it works once restored.
+
 1. Merge to `main`. The `build` job of `deploy.yml` pushes `tcgrass-api:sha-<commit>`; wait
    until it is green.
 2. **Release = your click:** Actions → **deploy** → **Run workflow** → branch `main`, leave
@@ -196,12 +270,9 @@ running stack (`tcgrass-compose down` in `/opt/tcgrass`), clone the repository,
   create a new token, update the secret). Expired credentials stop releases, not the running
   app; the agent logs `could not resolve … :prod` every minute.
 - **Certificates** live in Caddy's `caddy_data` Docker volume on the **boot disk**: a rebuilt
-  Droplet must request a new certificate (fine for duckdns.org; an sslip.io name can hit the
-  shared Let's Encrypt limit). Renewals happen automatically. Use the exact `PUBLIC_HOSTNAME` as
-  the URL: the certificate covers only that name.
-- **Changing the hostname** changes the web origin. Players are stored in the browser per
-  origin, so players created under the old name can't be reached from the new one, and an
-  installed PWA keeps opening the old name. Announce it before switching.
+  Droplet requests a new one (fine for duckdns.org). Renewals are automatic. Use the exact
+  `PUBLIC_HOSTNAME` as the URL: the certificate covers only that name. Hostname changes:
+  [§ Changing the hostname](#changing-the-hostname).
 - **Backups (NFR-003):** the API writes one online backup per UTC day to
   `${DATA_DIR}/backups/tcgrass-YYYY-MM-DD.db` (at startup if today's is missing, then checked
   hourly) and keeps the newest 7. Each run logs `backup_done`, or `backup_failed` at error level.
@@ -245,6 +316,75 @@ self.addEventListener("activate", (event) => {
 ```
 
 It removes every cache and unregisters itself. Player secrets in localStorage are kept.
+
+## 5. Security model
+What protects the production deployment, where each secret lives, and what to do when something
+goes wrong. Report vulnerabilities as described in [SECURITY.md](../SECURITY.md).
+
+### What is exposed
+- **Internet → Droplet:** only TCP 80/443 and UDP 443, to Caddy (Cloud Firewall). Port 80 only
+  redirects to HTTPS and answers certificate challenges. The API's port 3000 is not published.
+- **SSH:** TCP 22 from your own IP only; remove the rule when you don't need it, and use
+  `harden-ssh.sh` (§ 2d) to turn off root and password logins.
+- **Containers → cloud metadata:** blocked by an iptables rule installed before Docker starts
+  (`tcgrass-metadata-block.service`), so a compromised container can't read Droplet metadata.
+- **Outbound:** the API calls only `INFERENCE_BASE_URL` (redirects refused).
+
+### Where secrets live
+| Secret | Where | Protection |
+|---|---|---|
+| Inference key (`INFERENCE_API_KEY`) | `/opt/tcgrass/.env` on the Droplet only | Mode 600; a DO *model access key* (inference only), never a DO API token; redacted from logs |
+| Registry pull credentials | `/root/.docker/config.json` on the Droplet | Mode 600, root only; **read-only**, expire after 90 days (§ 2a) |
+| Registry push token (`DO_REGISTRY_TOKEN`) | Nowhere since 2026-10-11 (deleted and revoked) | When restored: an environment secret, `main` only, with a required reviewer |
+| Player secrets | Each player's browser; the DB stores only SHA-256 hashes | Header only, never logged |
+| DuckDNS account token | Your DuckDNS account | Not used by the Droplet (static IP); it can repoint the name, so keep it private |
+
+The repository holds no secrets: `.env` is git-ignored, gitleaks runs in pre-commit and CI, and a
+full-history gitleaks scan before going public found none (2026-10-11).
+
+**Why the push token matters most:** it can push images, and the Droplet's agent deploys
+whatever `:prod` points to. Whoever holds it can run code on the server. That's why it lives
+only behind a reviewed environment, never as a plain repository secret in a public repository.
+
+### Hardening in place
+- **Containers:** the API runs as uid 1000 (fixed in `compose.yaml`, so an image can't choose
+  root), read-only root filesystem, all capabilities dropped, `no-new-privileges`, memory and
+  PID limits. Caddy is also read-only, keeping only `NET_BIND_SERVICE`.
+- **Supply chain:** images deployed by digest; Caddy and base images pinned by digest; GitHub
+  Actions pinned by commit SHA; `package-lock.json`, `npm audit` and Dependabot.
+- **Application:** strict CSP (`'self'` only), HSTS, `nosniff`, no referrer, rate limits on
+  captures, player creation, friend requests and trades; photos never stored; model output
+  validated.
+- **Cost abuse:** `INFERENCE_DAILY_CALL_LIMIT` and `CAPTURES_PER_PLAYER_PER_DAY`, plus a DO billing
+  alert.
+
+### If something goes wrong
+- **Inference key leaked or bill spiking:** set `INFERENCE_DAILY_CALL_LIMIT=0` and run
+  `tcgrass-compose up -d api` (captures stop at once); revoke the key in the DO console, create a
+  new one, put it in `.env`, restore the limit and run `tcgrass-compose up -d api` again.
+- **Registry credentials on the Droplet leaked:** they can only pull. Revoke them by creating new
+  ones (§ 2a) and check DOCR for unexpected tags.
+- **Push token leaked:** revoke it in DO → API → Tokens, check the `:prod` digest in DOCR against
+  `/opt/tcgrass/.deployed-image`, and roll back to a known-good digest if they differ.
+- **Suspected compromise of the Droplet:** take a Volume snapshot for analysis, rotate every
+  secret above, rebuild the Droplet from Ubuntu with `setup.sh`, and restore the DB from a backup
+  taken before the incident (§ 4 Restore).
+- **Lost DuckDNS name or hostname change:** see [§ Changing the hostname](#changing-the-hostname).
+
+### Restoring releases
+1. Create a DO API token with only `registry:read` + `registry:update` and an expiry date.
+2. In GitHub, create the environments `registry` and `production`, both limited to `main`, with
+   you as required reviewer on `production`; add `DO_REGISTRY_TOKEN` as an **environment**
+   secret (never a repository secret).
+3. Replace `deploy.yml` with the environment-gated version (ADR 0008; agents prepare it in
+   `.reviews/`, you review and commit it), turn on branch protection for `main` and keep
+   "Require approval for all external contributors" on in Settings → Actions.
+4. Re-enable the `deploy` workflow and release as in § 3.
+
+### Rotation calendar
+- Registry pull credentials on the Droplet: every 90 days (§ 2a).
+- Push token: before its expiry date (once restored).
+- Inference key: after the challenge, then on any suspicion.
 
 ## Local run (NFR-011)
 To run against Ollama on the laptop:

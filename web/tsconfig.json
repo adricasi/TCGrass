@@ -16,5 +16,5 @@
     "skipLibCheck": true,
     "noEmit": true
   },
-  "include": ["src", "vite.config.ts", "../src/shared"]
+  "include": ["src", "vite.config.ts", "public-url.ts", "../src/shared"]
 }

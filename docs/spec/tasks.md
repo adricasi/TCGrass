@@ -371,6 +371,11 @@ challenge*; this milestone replaces it.
     expansion); DEV post (why open, Mermaid diagram, odds, field-test results); 60-s video
     incl. DO ↔ Ollama swap; GPU Droplet destroyed (not powered off); Q-9 terms cited if DO
     serverless was used.
+  - Added (2026-10-11, author decision): MIT `LICENSE`; open-source README (live link,
+    screenshots, Mermaid diagram, run locally with Ollama, self-host, configuration, credits);
+    `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1),
+    `docs/expansions.md`; SEO and link previews (description, canonical, Open Graph + Twitter
+    card with `og-image.png`, `robots.txt`; origin from `PUBLIC_URL` at build time).
   - Done when: post published and submitted by Sun 2026-10-11 22:00 CEST (hard deadline Mon 2026-10-12 08:59 CEST); DO billing shows no
     running GPU resources.
 
