@@ -376,6 +376,9 @@ challenge*; this milestone replaces it.
     `CONTRIBUTING.md`, `SECURITY.md`, `CODE_OF_CONDUCT.md` (Contributor Covenant 2.1),
     `docs/expansions.md`; SEO and link previews (description, canonical, Open Graph + Twitter
     card with `og-image.png`, `robots.txt`; origin from `PUBLIC_URL` at build time).
+    For the Gemma and DigitalOcean prize categories: `docs/gemma.md` (how Gemma is used, with
+    code links and measured accuracy) and `docs/digitalocean.md` (infrastructure, costs and
+    release pipeline), summarised in the README.
   - Done when: post published and submitted by Sun 2026-10-11 22:00 CEST (hard deadline Mon 2026-10-12 08:59 CEST); DO billing shows no
     running GPU resources.
 
