@@ -1,10 +1,12 @@
+import { Icon, type IconName } from "./Icon.js";
+
 export type Tab = "capture" | "binder" | "friends" | "inbox" | "odds";
 
-const TABS: { id: Exclude<Tab, "odds">; label: string }[] = [
-  { id: "capture", label: "Capture" },
-  { id: "binder", label: "Binder" },
-  { id: "friends", label: "Friends" },
-  { id: "inbox", label: "Inbox" },
+const TABS: { id: Exclude<Tab, "odds">; label: string; icon: IconName }[] = [
+  { id: "capture", label: "Capture", icon: "camera" },
+  { id: "binder", label: "Binder", icon: "binder" },
+  { id: "friends", label: "Friends", icon: "friends" },
+  { id: "inbox", label: "Inbox", icon: "inbox" },
 ];
 
 /** Bottom navigation (Capture · Binder · Friends · Inbox); odds open from the binder. */
@@ -33,6 +35,7 @@ export function Nav({
             onChange(tab.id);
           }}
         >
+          <Icon name={tab.icon} />
           {tab.label}
           {tab.id === "inbox" && inboxCount > 0 && (
             <span class="badge" aria-label={`${inboxCount} waiting`}>

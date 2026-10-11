@@ -3,6 +3,7 @@ import { useEffect, useState } from "preact/hooks";
 import type { FriendBinderResponse } from "../../src/shared/schemas/friends.js";
 import type { TradeCard } from "../../src/shared/schemas/trades.js";
 import { ApiError, getFriendBinder } from "./api.js";
+import { Icon } from "./Icon.js";
 import { formatCaptureDate, progressLabel } from "./binder-view.js";
 import { TradePicker } from "./TradePicker.js";
 import { rarityPresentation } from "./rarity.js";
@@ -58,7 +59,8 @@ export function FriendBinder({
   return (
     <section class="friend-binder">
       <button type="button" class="back" onClick={onBack}>
-        ← Friends
+        <Icon name="back" size={20} />
+        Friends
       </button>
       {failed && <p role="alert">Couldn't load this binder. Try again later.</p>}
       {data === null && !failed && <p>Loading…</p>}
@@ -70,7 +72,7 @@ export function FriendBinder({
           <p class="result" aria-live="polite">
             {notice}
           </p>
-          {data.binder.owned === 0 && <p>No cards yet.</p>}
+          {data.binder.owned === 0 && <p class="empty">No cards yet.</p>}
           <ul class="instances">
             {data.binder.cards
               .filter((card) => card.owned)
@@ -87,7 +89,10 @@ export function FriendBinder({
                       <span class="card-rarity">{rarity.label}</span>
                       <span class="instance-date">{formatCaptureDate(instance.capturedAt)}</span>
                       {instance.locked ? (
-                        <span class="locked">Unavailable: in a trade offer</span>
+                        <span class="locked">
+                          <Icon name="lock" size={16} />
+                          Unavailable: in a trade offer
+                        </span>
                       ) : (
                         <button
                           type="button"
@@ -101,6 +106,7 @@ export function FriendBinder({
                             });
                           }}
                         >
+                          <Icon name="trade" size={20} />
                           Offer a trade
                         </button>
                       )}

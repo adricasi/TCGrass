@@ -62,7 +62,9 @@ export function SentOffers({
       <p class="result" aria-live="polite">
         {message}
       </p>
-      {offers !== null && offers.length === 0 && <p>You haven't offered any trades yet.</p>}
+      {offers !== null && offers.length === 0 && (
+        <p class="empty">You haven't offered any trades yet.</p>
+      )}
       <ul class="requests">
         {offers?.map((offer) => (
           <li key={offer.id} class={`offer offer-${offer.status}`}>
@@ -74,7 +76,12 @@ export function SentOffers({
             </span>
             <span class="offer-status">{tradeStatusLabel(offer.status)}</span>
             {offer.status === "pending" && (
-              <button type="button" disabled={busy} onClick={() => void cancel(offer.id)}>
+              <button
+                type="button"
+                class="secondary"
+                disabled={busy}
+                onClick={() => void cancel(offer.id)}
+              >
                 Cancel
               </button>
             )}

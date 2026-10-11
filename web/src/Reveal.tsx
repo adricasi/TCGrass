@@ -24,6 +24,14 @@ export function Reveal({ card, onDismiss }: { card: CapturedCard; onDismiss: () 
   const rarity = rarityPresentation(card.rarity);
   const [entry] = useState(() => entryAnimation(card.rarity, prefersReducedMotion()));
   const [entering, setEntering] = useState(entry !== null);
+  const [foundAt] = useState(() =>
+    new Date().toLocaleString(undefined, {
+      day: "numeric",
+      month: "short",
+      hour: "numeric",
+      minute: "2-digit",
+    }),
+  );
   const dialogRef = useRef<HTMLDivElement>(null);
   const dismissRef = useRef<HTMLButtonElement>(null);
   useEffect(() => {
@@ -69,14 +77,18 @@ export function Reveal({ card, onDismiss }: { card: CapturedCard; onDismiss: () 
           }
         }}
       >
-        <img class="card-art" src={card.imageUrl} alt={card.name} />
+        <p class="card-head">
+          <span class="card-category">{card.category}</span>
+          <span class="card-found">found {foundAt}</span>
+        </p>
+        <div class="card-plate">
+          <img class="card-art" src={card.imageUrl} alt={card.name} />
+          {/* The rarity in words on a stamp whose shape changes too: not colour alone (AC-006.2). */}
+          <span class="card-stamp">{rarity.label}</span>
+        </div>
         <h2 id="reveal-name" class="card-name">
           {card.name}
         </h2>
-        <p class="card-meta">
-          <span class="card-category">{card.category}</span>
-          <span class="card-rarity">{rarity.label}</span>
-        </p>
         {/* Model output: rendered as text, never as markup (AC-006.4). */}
         {card.flavorLine !== null && <p class="card-flavor">{card.flavorLine}</p>}
       </article>

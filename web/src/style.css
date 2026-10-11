@@ -1,217 +1,506 @@
+/* Field Journal (ADR 0009). How to use these tokens: docs/design/style-guide.md. */
+
+@font-face {
+  font-family: "Fraunces";
+  font-style: normal;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url("./assets/fonts/fraunces-var.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Fraunces";
+  font-style: italic;
+  font-weight: 400 600;
+  font-display: swap;
+  src: url("./assets/fonts/fraunces-italic-var.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Figtree";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("./assets/fonts/figtree-var.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Caveat";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("./assets/fonts/caveat-500.woff2") format("woff2");
+}
+
 :root {
-  color-scheme: light dark;
-  font-family:
-    system-ui,
-    -apple-system,
-    "Segoe UI",
-    Roboto,
-    sans-serif;
-  line-height: 1.4;
-  /* Design tokens (T-020) */
-  --accent: #24724a;
-  --accent-text: #fff;
-  --danger: #c0392b;
-  --rarity-common: #7d8a96;
-  --rarity-rare: #2f6fd6;
-  --rarity-epic: #8a3fd1;
-  --rarity-legendary: #d49a16;
+  color-scheme: light;
+  --paper: #f3ebdd;
+  --paper-raised: #fbf6ec;
+  --paper-edge: #cdbf9f;
+  --ink: #2b2a26;
+  --ink-soft: #5e574a;
+  --moss: #4f6b3a;
+  --moss-deep: #3d5530;
+  --river: #3e5c76;
+  --rust: #b5532a;
+  --rust-ink: #9c4522;
+  --gilt: #b08a2e;
+  --gilt-ink: #7a5d16;
+  --font-display: "Fraunces", Georgia, serif;
+  --font-body: "Figtree", "Segoe UI", sans-serif;
+  --font-note: "Caveat", "Bradley Hand", cursive;
+  --radius: 6px;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
   --space-4: 16px;
-  --radius: 12px;
-  --border: color-mix(in srgb, CanvasText 20%, transparent);
-}
-
-/* Base button; zero specificity so every classed button (nav, links, binder cards) wins. */
-:where(button) {
-  min-height: 44px;
-  padding: var(--space-2) var(--space-4);
-  font: inherit;
-  color: inherit;
-  background: color-mix(in srgb, CanvasText 6%, Canvas);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  cursor: pointer;
-}
-
-:where(button):disabled {
-  cursor: default;
-  opacity: 0.6;
-}
-
-:where(button):focus-visible {
-  outline: 3px solid var(--accent);
-  outline-offset: 2px;
-}
-
-h1,
-h2 {
-  line-height: 1.2;
+  --space-5: 24px;
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.45;
+  color: var(--ink);
 }
 
 body {
   margin: 0;
-  padding: 16px;
+  padding: var(--space-4);
+  background-color: var(--paper);
+  background-image: url("./assets/paper-grain.svg");
 }
 
 main {
   max-width: 430px;
   margin: 0 auto;
+  padding-bottom: calc(84px + env(safe-area-inset-bottom));
 }
 
-.capture {
+h1,
+h2,
+h3 {
+  margin: var(--space-4) 0 var(--space-2);
+  font-family: var(--font-display);
+  font-weight: 600;
+  line-height: 1.15;
+}
+
+h2 {
+  font-size: 1.6rem;
+}
+
+h3 {
+  font-size: 1.2rem;
+}
+
+p {
+  margin: var(--space-2) 0;
+}
+
+strong {
+  font-weight: 600;
+}
+
+.icon {
+  flex: none;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Masthead */
+.masthead {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  align-items: center;
+  gap: var(--space-2);
+  padding-bottom: var(--space-2);
+  border-bottom: 1px solid var(--paper-edge);
 }
 
-.preview {
-  width: 100%;
-  aspect-ratio: 3 / 4;
-  object-fit: cover;
-  border-radius: 12px;
-  background: #222;
+.wordmark {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-style: italic;
+  font-weight: 400;
 }
 
-.shutter,
-.dismiss {
-  color: var(--accent-text);
-  font-weight: bold;
-  background: var(--accent);
+.masthead .icon {
+  color: var(--moss);
+}
+
+.masthead-note {
+  margin-left: auto;
+  font-family: var(--font-note);
+  font-size: 1.15rem;
+  color: var(--river);
+}
+
+.player {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: var(--space-1) var(--space-3);
+  margin: var(--space-2) 0 var(--space-3);
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+}
+
+.player strong {
+  color: var(--ink);
+  letter-spacing: 0.08em;
+}
+
+/* Buttons: primary by default; `.secondary` for the quieter choice (style guide § Components). */
+:where(button) {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  min-height: 48px;
+  padding: 0 var(--space-5);
+  font: 600 1rem var(--font-body);
+  color: var(--paper-raised);
+  background: var(--moss);
   border: none;
-  border-radius: 999px;
+  border-radius: var(--radius);
+  box-shadow: inset 0 -3px 0 rgb(0 0 0 / 20%);
+  cursor: pointer;
 }
 
-.shutter {
-  font-size: 1.25rem;
-  padding: 14px;
+:where(button):active {
+  background: var(--moss-deep);
+}
+
+:where(button):disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+:where(button, a, input):focus-visible {
+  outline: 3px solid var(--river);
+  outline-offset: 2px;
+}
+
+.secondary {
+  color: var(--ink);
+  background: transparent;
+  border: 1.5px solid var(--ink);
+  box-shadow: none;
+}
+
+.secondary:active {
+  background: rgb(43 42 38 / 8%);
+}
+
+.link,
+.back {
+  min-height: 44px;
+  padding: 0;
+  color: var(--ink);
+  font-weight: 500;
+  background: none;
+  border: none;
+  box-shadow: none;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.back {
+  margin-top: var(--space-2);
+  text-decoration: none;
+}
+
+/* Forms */
+input[type="text"] {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 48px;
+  padding: 0 var(--space-3);
+  font: 1rem var(--font-body);
+  color: var(--ink);
+  background: var(--paper-raised);
+  border: 1.5px solid var(--ink-soft);
+  border-radius: var(--radius);
+}
+
+input[type="text"]:focus {
+  border-color: var(--ink);
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  width: 22px;
+  height: 22px;
+  margin: 0;
+  flex: none;
+  accent-color: var(--moss);
+}
+
+label {
+  font-weight: 500;
+}
+
+.hint {
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+}
+
+.error {
+  min-height: 1.2em;
+  color: var(--rust-ink);
+  font-weight: 500;
 }
 
 .result {
   min-height: 1.5em;
-  font-size: 1.1rem;
   text-align: center;
 }
 
+/* A note tucked into the journal: first run, camera problems, private browsing. */
+.notice {
+  margin: var(--space-3) 0;
+  padding: var(--space-3) var(--space-4);
+  background: var(--paper-raised);
+  border: 1.5px dashed var(--ink-soft);
+  border-radius: var(--radius);
+}
+
+.notice h2 {
+  margin-top: 0;
+  font-size: 1.25rem;
+}
+
+/* First run */
 .first-run {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: var(--space-3);
 }
 
 .first-run .name {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--space-1);
 }
 
-.first-run input[type="text"] {
-  font-size: 1.1rem;
-  padding: 10px;
+.confirm {
+  display: flex;
+  gap: var(--space-3);
+  align-items: flex-start;
+  font-weight: 400;
 }
 
-.hint {
-  font-size: 0.9rem;
-  opacity: 0.8;
-}
-
-.error {
-  min-height: 1.2em;
-  color: var(--danger);
-}
-
-.player {
-  text-align: center;
-}
-
-/* Card reveal (AC-006.1–006.5) */
-.reveal {
-  position: fixed;
-  inset: 0;
+/* Capture */
+.capture {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 16px;
-  padding: 16px;
-  background: rgb(0 0 0 / 80%);
-  /* Short screens: scroll instead of clipping the dismiss button (AC-006.5). */
-  overflow-y: auto;
-  /* The entry animation's overshoot must not flash a horizontal scrollbar at 360 px. */
-  overflow-x: clip;
-  justify-content: safe center;
+  gap: var(--space-3);
 }
 
-.card {
+.viewfinder {
   position: relative;
-  width: min(100%, 360px);
-  padding: 10px;
-  border: 6px solid var(--frame);
-  border-radius: 16px;
-  background: #fffaf0;
-  color: #222;
+  padding: var(--space-2);
+  background: var(--paper-raised);
+  border: 1px solid var(--paper-edge);
+  border-radius: 4px;
+  box-shadow: 0 12px 22px -16px rgb(70 48 16 / 55%);
+}
+
+.preview {
+  display: block;
+  width: 100%;
+  aspect-ratio: 3 / 4;
+  object-fit: cover;
+  background: var(--ink);
+  border-radius: 2px;
+}
+
+/* Corner marks, like a photo mounted in an album. */
+.viewfinder::before,
+.viewfinder::after {
+  content: "";
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  border: 2px solid var(--paper-raised);
+  pointer-events: none;
+}
+
+.viewfinder::before {
+  top: 18px;
+  left: 18px;
+  border-right: none;
+  border-bottom: none;
+}
+
+.viewfinder::after {
+  right: 18px;
+  bottom: 18px;
+  border-top: none;
+  border-left: none;
+}
+
+.capture-hint {
+  margin: 0;
+  font-size: 0.95rem;
+  text-align: center;
+  color: var(--river);
+}
+
+.shutter {
+  min-height: 60px;
+  font-size: 1.15rem;
+  border-radius: 999px;
+}
+
+/* Card (AC-006.1–006.2): style guide § Card anatomy. */
+.card {
+  --frame: var(--paper-edge);
+  --stamp: var(--ink-soft);
+  position: relative;
+  box-sizing: border-box;
+  width: min(100%, 340px);
+  padding: 14px;
+  color: var(--ink);
+  background: var(--paper-raised);
+  border: 1px solid var(--frame);
+  border-radius: 3px;
+  box-shadow: 0 14px 26px -16px rgb(40 28 10 / 60%);
   overflow: hidden;
   /* Hides the mirrored back face during the Epic/Legendary entry spin. */
   backface-visibility: hidden;
 }
 
-/* The dialog holds focus only during the entry (it has no visible control to outline). */
-.reveal:focus {
-  outline: none;
+.card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin: 0 0 var(--space-2);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.card-found {
+  font-family: var(--font-note);
+  font-size: 1.15rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  text-transform: none;
+  color: var(--river);
+}
+
+.card-plate {
+  position: relative;
 }
 
 .card-art {
   display: block;
+  box-sizing: border-box;
   width: 100%;
   aspect-ratio: 2 / 3;
-  max-height: 50dvh;
+  max-height: 46dvh;
   object-fit: cover;
-  border-radius: 8px;
+  border: 3px double var(--frame);
 }
 
 .card-name {
-  margin: 8px 0 0;
-}
-
-.card-meta {
-  display: flex;
-  justify-content: space-between;
-  margin: 4px 0;
-}
-
-.card-rarity {
-  padding: 0 8px;
-  border-radius: 999px;
-  background: var(--frame);
-  color: #fff;
-  font-weight: bold;
+  /* Clear of the rarity stamp hanging below the art. */
+  margin: var(--space-3) 84px var(--space-1) 0;
+  font-size: 1.75rem;
+  line-height: 1;
 }
 
 .card-flavor {
+  margin: var(--space-1) 0 0;
+  font-family: var(--font-display);
   font-style: italic;
+  line-height: 1.35;
+  color: #4a4438;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
-.frame-common {
-  --frame: var(--rarity-common);
+/* The rarity stamp: shape and text change with rarity, not only colour (AC-006.2). */
+.card-stamp {
+  position: absolute;
+  right: 10px;
+  bottom: -18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 78px;
+  height: 78px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--stamp);
+  background: rgb(251 246 236 / 92%);
+  border: 2px solid var(--stamp);
+  border-radius: 50%;
+  transform: rotate(-12deg);
 }
+
 .frame-rare {
-  --frame: var(--rarity-rare);
+  --frame: var(--river);
+  --stamp: var(--river);
 }
+
 .frame-epic {
-  --frame: var(--rarity-epic);
+  --frame: var(--rust);
+  --stamp: var(--rust);
 }
+
 .frame-legendary {
-  --frame: var(--rarity-legendary);
+  --frame: var(--gilt);
+  --stamp: var(--gilt-ink);
 }
 
-/* Animated foil for Epic and Legendary only (AC-006.2), with a glow in the frame colour. */
-.foil {
-  box-shadow: 0 0 24px 4px var(--frame);
+.card.frame-rare,
+.card.frame-epic {
+  box-shadow:
+    0 0 0 4px var(--paper-raised),
+    0 0 0 5px var(--frame),
+    0 16px 26px -16px rgb(40 28 10 / 60%);
 }
 
+.card.frame-rare .card-stamp {
+  border: 4px double var(--stamp);
+  transform: rotate(9deg);
+}
+
+.card.frame-epic .card-stamp,
+.card.frame-legendary .card-stamp {
+  color: var(--paper-raised);
+  background: var(--stamp);
+  box-shadow:
+    inset 0 0 0 3px var(--paper-raised),
+    inset 0 0 0 4px var(--stamp);
+}
+
+.card.frame-legendary {
+  background: #fbf3df;
+  border-width: 2px;
+  box-shadow:
+    0 0 0 5px #fbf3df,
+    0 0 0 7px var(--gilt),
+    0 0 28px 6px rgb(176 138 46 / 45%);
+}
+
+.card.frame-legendary .card-stamp {
+  font-size: 0.62rem;
+  transform: rotate(-8deg);
+}
+
+/* Animated foil for Epic and Legendary only (AC-006.2). */
 .foil::after {
   content: "";
   position: absolute;
@@ -219,14 +508,14 @@ main {
   pointer-events: none;
   background: linear-gradient(
     115deg,
-    transparent 30%,
-    rgb(255 255 255 / 55%) 45%,
-    rgb(255 215 120 / 35%) 50%,
-    transparent 65%
+    transparent 32%,
+    rgb(255 240 190 / 55%) 46%,
+    rgb(255 255 255 / 45%) 50%,
+    transparent 64%
   );
   background-size: 250% 100%;
-  animation: foil-sweep 2.4s linear infinite;
-  mix-blend-mode: screen;
+  animation: foil-sweep 3.2s ease-in-out infinite;
+  mix-blend-mode: soft-light;
 }
 
 @keyframes foil-sweep {
@@ -236,6 +525,36 @@ main {
   to {
     background-position: -100% 0;
   }
+}
+
+/* Reveal (AC-006.1–006.6) */
+.reveal {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: safe center;
+  gap: var(--space-5);
+  padding: var(--space-4);
+  background: rgb(43 42 38 / 82%);
+  /* Short screens: scroll instead of clipping the dismiss button (AC-006.5). */
+  overflow-y: auto;
+  /* The entry animation's overshoot must not flash a horizontal scrollbar at 360 px. */
+  overflow-x: clip;
+}
+
+/* The dialog holds focus only during the entry (it has no visible control to outline). */
+.reveal:focus {
+  outline: none;
+}
+
+.dismiss {
+  min-height: 52px;
+  padding: 0 32px;
+  font-size: 1.1rem;
+  border-radius: 999px;
 }
 
 /* Reveal entry (AC-006.6): at most 2,000 ms including delay; ENTRY_FALLBACK_MS in
@@ -266,306 +585,443 @@ main {
 @keyframes entry-spin-glow {
   from {
     transform: perspective(800px) rotateY(-540deg) scale(0.4);
-    filter: brightness(2.5);
-    box-shadow: 0 0 0 0 var(--frame);
+    filter: brightness(2.2) sepia(0.4);
     opacity: 0;
   }
   60% {
-    transform: perspective(800px) rotateY(-20deg) scale(1.08);
-    filter: brightness(1.6);
-    box-shadow: 0 0 48px 16px var(--frame);
+    transform: perspective(800px) rotateY(-20deg) scale(1.06);
+    filter: brightness(1.4) sepia(0.2);
     opacity: 1;
   }
   to {
     transform: none;
     filter: none;
-    box-shadow: 0 0 24px 4px var(--frame);
   }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .foil::after {
-    animation: none;
-    background-position: 50% 0;
-  }
-
-  .reveal-entering .card {
-    animation: none;
-  }
-}
-
-.dismiss {
-  font-size: 1.1rem;
-  padding: 12px 24px;
-  border-radius: 999px;
 }
 
 /* Bottom navigation */
-main {
-  padding-bottom: calc(72px + env(safe-area-inset-bottom));
-}
-
-.visually-hidden {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
-.bottom-nav button:disabled {
-  opacity: 0.5;
-}
-
 .bottom-nav {
   position: fixed;
   right: 0;
   bottom: 0;
   left: 0;
-  display: flex;
-  justify-content: space-around;
-  padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
-  background: Canvas;
-  border-top: 1px solid var(--border);
+  z-index: 5;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  max-width: 430px;
+  margin: 0 auto;
+  padding: 6px 8px calc(6px + env(safe-area-inset-bottom));
+  background: var(--paper-raised);
+  border-top: 1px solid var(--paper-edge);
+  box-shadow: 0 -8px 18px -14px rgb(40 28 10 / 45%);
 }
 
 .bottom-nav button {
-  flex: 1;
-  padding: 10px;
-  font-size: 1rem;
+  position: relative;
+  flex-direction: column;
+  gap: 2px;
+  min-height: 56px;
+  padding: 0;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--ink);
   background: none;
-  border: none;
-  color: inherit;
+  border-radius: var(--radius);
+  box-shadow: none;
 }
 
 .bottom-nav button[aria-current="page"] {
-  font-weight: bold;
-  text-decoration: underline;
+  font-weight: 700;
+  color: var(--moss);
+}
+
+/* Not colour alone: the current tab also gets a leaf-shaped marker. */
+.bottom-nav button[aria-current="page"]::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  width: 18px;
+  height: 4px;
+  background: var(--moss);
+  border-radius: 4px 0;
+}
+
+.bottom-nav button:disabled {
+  opacity: 0.45;
+}
+
+.badge {
+  position: absolute;
+  top: 4px;
+  left: calc(50% + 6px);
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  box-sizing: border-box;
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 18px;
+  color: var(--paper-raised);
+  background: var(--rust);
+  border-radius: 9px;
 }
 
 /* Binder (REQ-007) */
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-3);
+}
+
 .progress {
-  font-weight: normal;
-  opacity: 0.8;
+  font-family: var(--font-body);
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--moss);
+}
+
+.progress-leaves {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin: 0 0 var(--space-3);
+  padding: 0;
+  list-style: none;
+}
+
+.progress-leaves li {
+  width: 12px;
+  height: 18px;
+  box-sizing: border-box;
+  border: 1.5px dashed #8a7f6a;
+  border-radius: 12px 0;
+}
+
+.progress-leaves li.found {
+  background: var(--moss);
+  border: none;
 }
 
 .binder-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
+  gap: var(--space-3);
+  margin: 0;
   padding: 0;
   list-style: none;
 }
 
 .binder-card {
+  --frame: var(--paper-edge);
   display: flex;
   flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
   gap: 4px;
+  box-sizing: border-box;
   width: 100%;
-  padding: 0;
+  height: 100%;
+  min-height: 0;
+  padding: 6px;
   font: inherit;
   color: inherit;
   text-align: left;
-  background: none;
-  border: none;
+  background: var(--paper-raised);
+  border: 1px solid var(--frame);
+  border-radius: 3px;
+  box-shadow: 0 8px 14px -12px rgb(40 28 10 / 60%);
+}
+
+.binder-card.frame-legendary {
+  border-width: 2px;
+  box-shadow:
+    0 0 0 2px var(--paper-raised),
+    0 0 0 3px var(--gilt),
+    0 0 14px 2px rgb(176 138 46 / 40%);
+}
+
+.binder-number {
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--ink-soft);
 }
 
 .binder-card img {
+  display: block;
+  box-sizing: border-box;
   width: 100%;
   aspect-ratio: 2 / 3;
   object-fit: cover;
-  border-radius: 6px;
-}
-
-/* Missing cards: a greyed-out silhouette with the name (AC-007.1). */
-.binder-card.missing img {
-  filter: brightness(0) opacity(0.25);
-}
-
-.binder-card.missing .binder-name {
-  opacity: 0.6;
+  border: 3px double var(--frame);
 }
 
 .binder-name {
-  font-size: 0.9rem;
-  font-weight: bold;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+/* Missing cards: a dashed pressed-leaf outline with the name (AC-007.1). */
+.binder-card.missing {
+  background: transparent;
+  border: 1.5px dashed #8a7f6a;
+  box-shadow: none;
+}
+
+.binder-card.missing img {
+  border: 3px double transparent;
+  filter: brightness(0) opacity(0.14);
+}
+
+.binder-card.missing .binder-name {
+  color: var(--ink-soft);
+  font-weight: 400;
 }
 
 .binder-counts {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
-  font-size: 0.75rem;
+  gap: 3px;
 }
 
-.count {
-  padding: 0 6px;
+/* Rarity chip: text label plus colour (AC-006.2). */
+.count,
+.card-rarity {
+  display: inline-block;
+  padding: 1px 7px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--paper-raised);
+  background: var(--ink-soft);
   border-radius: 999px;
-  color: #fff;
 }
 
-.count-common {
-  background: var(--rarity-common);
+.count-rare,
+.frame-rare .card-rarity {
+  background: var(--river);
 }
-.count-rare {
-  background: var(--rarity-rare);
+
+.count-epic,
+.frame-epic .card-rarity {
+  background: var(--rust);
 }
-.count-epic {
-  background: var(--rarity-epic);
-}
-.count-legendary {
-  background: var(--rarity-legendary);
+
+.count-legendary,
+.frame-legendary .card-rarity {
+  background: var(--gilt-ink);
 }
 
 /* Card detail (AC-007.2) */
 .detail-art {
   display: block;
-  width: min(100%, 280px);
+  box-sizing: border-box;
+  width: min(100%, 260px);
   aspect-ratio: 2 / 3;
-  margin: 8px auto;
+  margin: var(--space-3) auto;
   object-fit: cover;
-  border-radius: 10px;
+  border: 3px double var(--ink);
+  box-shadow:
+    0 0 0 8px var(--paper-raised),
+    0 0 0 9px var(--paper-edge),
+    0 18px 28px -18px rgb(40 28 10 / 60%);
 }
 
-.instances {
+.card-detail > h2 {
+  margin-top: var(--space-5);
+  text-align: center;
+}
+
+.card-category {
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+}
+
+.card-detail > .card-category {
+  margin-top: 0;
+  text-align: center;
+}
+
+/* Rows: instances, friends, offers, requests */
+.instances,
+.friend-list,
+.requests {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: var(--space-2);
+  margin: var(--space-2) 0;
   padding: 0;
   list-style: none;
 }
 
+.instance,
+.requests li,
+.friend-list button {
+  box-sizing: border-box;
+  background: var(--paper-raised);
+  border: 1px solid var(--paper-edge);
+  border-radius: 8px;
+}
+
 .instance {
+  --frame: var(--paper-edge);
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: center;
-  padding: 8px;
-  border-left: 6px solid var(--frame);
-  border-radius: 6px;
+  margin: 0;
+  padding: var(--space-2) var(--space-3);
+  border-left: 4px solid var(--frame);
+}
+
+.instance-date {
+  margin-left: auto;
+  font-family: var(--font-note);
+  font-size: 1.15rem;
+  color: var(--river);
 }
 
 .locked {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
   font-size: 0.85rem;
-  font-weight: bold;
+  font-weight: 600;
+  color: var(--ink-soft);
 }
 
 .instance .card-flavor {
   width: 100%;
-  margin: 0;
+  font-size: 0.95rem;
 }
 
-.back {
-  background: none;
-  border: none;
-  color: inherit;
-  font-size: 1rem;
+.instance-art {
+  width: 44px;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  border: 2px double var(--frame, var(--paper-edge));
+  box-sizing: border-box;
 }
 
-/* Odds (AC-005.4) */
-.odds table {
+.instance.unavailable {
+  opacity: 0.6;
+}
+
+.instance.pick {
   width: 100%;
-  border-collapse: collapse;
+  min-height: 64px;
+  cursor: pointer;
 }
 
-.odds th,
-.odds td {
-  padding: 8px;
-  text-align: left;
+.instance.pick:has(input:checked) {
+  background: #eef1e6;
+  border-color: var(--moss);
+  border-left-color: var(--frame);
+  box-shadow: 0 0 0 2px var(--moss);
 }
 
-/* Friends and inbox (REQ-008) */
-.badge {
-  display: inline-block;
-  min-width: 1.4em;
-  margin-left: 4px;
-  padding: 0 4px;
-  border-radius: 999px;
-  background: var(--danger);
-  color: #fff;
-  font-size: 0.8rem;
-  font-weight: bold;
+.instance .binder-name {
+  flex: 1;
+}
+
+/* Friends (REQ-008) */
+.profile {
+  padding: var(--space-3) var(--space-4);
+  background: var(--paper-raised);
+  border: 1px solid var(--paper-edge);
+  border-radius: 8px;
+}
+
+.profile-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
 }
 
 .friend-code {
-  font-family: ui-monospace, monospace;
-  letter-spacing: 0.08em;
+  display: block;
+  margin: var(--space-1) 0 var(--space-2);
+  font-family: var(--font-display);
+  font-size: 1.8rem;
+  letter-spacing: 0.14em;
 }
 
-.profile,
 .add-friend {
   display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
 }
 
 .add-friend label {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  width: 100%;
+  gap: var(--space-1);
 }
 
 .add-friend input {
-  padding: 10px;
-  font-family: ui-monospace, monospace;
-  font-size: 1.1rem;
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
-.friend-list,
-.requests {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 0;
-  list-style: none;
-}
-
 .friend-list button {
+  justify-content: space-between;
   width: 100%;
-  padding: 12px;
-  font-size: 1rem;
-  text-align: left;
+  min-height: 56px;
+  padding: 0 var(--space-4);
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  color: var(--ink);
+  box-shadow: none;
 }
 
+.empty {
+  padding: var(--space-4);
+  text-align: center;
+  color: var(--ink-soft);
+  border: 1.5px dashed var(--paper-edge);
+  border-radius: 8px;
+}
+
+/* Inbox and trades (REQ-009, REQ-010) */
 .requests li {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--space-2);
   align-items: center;
+  padding: var(--space-3);
 }
 
-.instance-art {
-  width: 48px;
-  aspect-ratio: 2 / 3;
-  object-fit: cover;
-  border-radius: 4px;
+.requests li > span:first-child,
+.requests li > .offer-cards {
+  flex: 1 1 100%;
 }
 
-.instance.unavailable {
-  opacity: 0.55;
+/* Accept / Decline side by side on their own row. */
+.requests li > button {
+  flex: 1 1 0;
 }
 
-.link {
-  padding: 0;
-  background: none;
-  border: none;
-  color: inherit;
-  text-decoration: underline;
-}
-
-/* Trades (REQ-009) */
-.instance.pick {
-  width: 100%;
-  cursor: pointer;
+.offer-cards {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+  color: var(--ink-soft);
 }
 
 .offer-status {
-  font-size: 0.9rem;
-  font-style: italic;
+  font-family: var(--font-note);
+  font-size: 1.2rem;
+  color: var(--river);
 }
 
 .offer-cancelled,
@@ -574,8 +1030,44 @@ main {
   opacity: 0.6;
 }
 
-.offer-cards {
-  display: flex;
-  gap: 6px;
-  align-items: center;
+.trade-picker .instance:first-of-type {
+  margin-bottom: var(--space-3);
+}
+
+/* Odds (AC-005.4) */
+.odds table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--paper-raised);
+  border: 1px solid var(--paper-edge);
+}
+
+.odds th,
+.odds td {
+  padding: var(--space-3);
+  text-align: left;
+  border-bottom: 1px dashed var(--paper-edge);
+}
+
+.odds td {
+  font-family: var(--font-display);
+  font-size: 1.2rem;
+  text-align: right;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+  }
+
+  .foil::after {
+    animation: none;
+    background-position: 50% 0;
+  }
+
+  .reveal-entering .card {
+    animation: none;
+  }
 }

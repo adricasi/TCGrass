@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  catalogueNumber,
   countBadges,
   formatCaptureDate,
   oddsRows,
   progressLabel,
+  rarestOwned,
 } from "../../web/src/binder-view.js";
 
 describe("binder view helpers", () => {
@@ -32,5 +34,18 @@ describe("binder view helpers", () => {
 
   it("AC-007.2 shows the capture date", () => {
     expect(formatCaptureDate("2026-10-10T09:00:00.000Z", "en-GB")).toBe("10 Oct 2026");
+  });
+});
+
+describe("binder tile helpers (T-024)", () => {
+  it("AC-007.1 numbers catalogue cards from 01 in file order", () => {
+    expect(catalogueNumber(0)).toBe("Nº 01");
+    expect(catalogueNumber(14)).toBe("Nº 15");
+  });
+
+  it("AC-007.1 frames an owned card by its rarest copy; a missing card has none", () => {
+    expect(rarestOwned({ common: 2, rare: 0, epic: 1, legendary: 0 })).toBe("epic");
+    expect(rarestOwned({ common: 1, rare: 0, epic: 0, legendary: 0 })).toBe("common");
+    expect(rarestOwned({ common: 0, rare: 0, epic: 0, legendary: 0 })).toBeNull();
   });
 });

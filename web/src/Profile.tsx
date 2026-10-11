@@ -1,6 +1,7 @@
 import { useState } from "preact/hooks";
 
 import type { PublicPlayer } from "../../src/shared/schemas/players.js";
+import { Icon } from "./Icon.js";
 
 /** The player's own friend code with copy and share (AC-008.1). */
 export function Profile({ player }: { player: PublicPlayer }) {
@@ -18,23 +19,25 @@ export function Profile({ player }: { player: PublicPlayer }) {
 
   return (
     <section class="profile">
-      <p>
-        {player.displayName}, your friend code is
-        <strong class="friend-code"> {player.friendCode}</strong>
-      </p>
-      <button type="button" onClick={() => void copy()}>
-        {copied ? "Copied!" : "Copy code"}
-      </button>
-      {typeof navigator.share === "function" && (
-        <button
-          type="button"
-          onClick={() => {
-            navigator.share({ text: shareText }).catch(() => undefined);
-          }}
-        >
-          Share
+      <p class="card-category">{player.displayName}, your friend code</p>
+      <strong class="friend-code">{player.friendCode}</strong>
+      <div class="profile-actions">
+        {typeof navigator.share === "function" && (
+          <button
+            type="button"
+            onClick={() => {
+              navigator.share({ text: shareText }).catch(() => undefined);
+            }}
+          >
+            <Icon name="share" size={20} />
+            Share
+          </button>
+        )}
+        <button type="button" class="secondary" onClick={() => void copy()}>
+          <Icon name={copied ? "check" : "copy"} size={20} />
+          {copied ? "Copied!" : "Copy code"}
         </button>
-      )}
+      </div>
     </section>
   );
 }

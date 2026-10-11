@@ -198,4 +198,13 @@ describe("service worker (app shell only)", () => {
     await worker.request("/assets/index-b.js");
     expect(worker.cachedPaths().sort()).toEqual(["/", "/assets/index-b.js"]);
   });
+
+  it("AC-013.1 keeps cached fonts, which only the stylesheet references (T-024)", async () => {
+    const shell = '<link rel="stylesheet" href="/assets/index-a.css">';
+    const worker = loadWorker((url) => (url.endsWith("/") ? html(shell) : js("bytes")));
+    await worker.lifecycle("install");
+    await worker.request("/assets/fraunces-var-abc.woff2");
+    await worker.navigate("/");
+    expect(worker.cachedPaths()).toContain("/assets/fraunces-var-abc.woff2");
+  });
 });

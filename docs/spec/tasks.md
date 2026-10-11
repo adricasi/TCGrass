@@ -1,7 +1,8 @@
 # Tasks: TCGrass
 
 - Status: Approved (2026-10-08) <!-- Draft | In review | Approved -->
-- Last updated: 2026-10-10 (rescope: T-010 deferred, T-019 cooldown and T-020 reveal + polish
+- Last updated: 2026-10-11 (T-024 Field Journal redesign added, ADR 0009; T-002b done). Earlier:
+  2026-10-10 (rescope: T-010 deferred, T-019 cooldown and T-020 reveal + polish
   added, T-021 backlog; earlier: T-018 done, T-016–T-018 added)
 
 Legend: `[ ]` todo · `[~]` in progress · `[x]` done · `[!]` blocked.
@@ -77,7 +78,7 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
   - Result (2026-10-09): done. Laptop test by the author: webcam photo of a dog returned `dog`
     via Ollama + `gemma4:e4b` (dog instead of oak; same code path, oak verified in the T-001 spike).
 
-- [~] T-002b: Deploy skeleton to the Droplet over HTTPS
+- [x] T-002b: Deploy skeleton to the Droplet over HTTPS
   - Estimate: 1 h
   - Requirements: NFR-001, NFR-011, AC-004.4
   - Depends on: T-002a
@@ -98,6 +99,8 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
     `.github/workflows/ci-node.yml` (agent edits denied there), Droplet setup, deploy, phone oak
     test, `curl -I` redirect. sslip.io and nip.io are **not** on the Public Suffix List
     (checked 2026-10-10): fallback is a hostname under a listed domain (e.g. duckdns.org).
+  - Result (2026-10-11): done. Deployed at https://143.198.251.237.sslip.io/ through T-023's
+    release path; the author confirmed it works on a phone.
 
 ## Milestone 2: Collect (T-003 Fri evening; rest Sat 10-10 morning)
 - [x] T-003: Database + expansion seed command
@@ -248,6 +251,27 @@ challenge*; this milestone replaces it.
     rather than @testing-library/preact, which isn't installed. 471 tests. Review: code-reviewer,
     no Blockers; Should-fix applied.
 
+- [~] T-024: Field Journal visual redesign (added 2026-10-11, ADR 0009, author decision)
+  - Estimate: ~3–4 h
+  - Requirements: REQ-006 (AC-006.1–006.6), REQ-007, NFR-010
+  - Depends on: T-020
+  - Scope: style guide `docs/design/style-guide.md`; self-hosted fonts (Fraunces, Figtree,
+    Caveat; OFL) and Lucide icons as inline SVG (ISC), no new runtime dependencies; tokens and
+    paper texture in `web/src/style.css`; then one screen at a time: card + reveal (rarity
+    stamps: Common ink, Rare double ring, Epic rust, Legendary gilt seal + sheen), binder + card
+    detail + odds, capture + first run, friends, inbox, trades, nav. CSP unchanged (`'self'`), no
+    inline styles, 360–430 px portrait, rarity still labelled in text (AC-006.2), reduced motion
+    still respected (AC-006.6).
+  - Done when: existing UI tests and the AC-006.6 tests pass; a test proves every font file
+    referenced by the stylesheet exists and has its licence next to it; 👤 checked on a phone;
+    before/after screenshots for the post.
+  - Result (2026-10-11): agent part done; waiting on 👤 phone check and screenshots for the post.
+    Fonts (220 KB, OFL) and Lucide icons (ISC) self-hosted, notices in `THIRD_PARTY_NOTICES.md`
+    and `/licenses/`; every screen restyled; binder tiles numbered and framed by the rarest copy;
+    service worker keeps cached fonts. Checked with headless screenshots at 390 px (no console or
+    CSP errors). 478 tests. Review: code-reviewer, no Blockers; Should-fix applied (silhouette
+    kept per AC-007.1, error-text and input-border contrast, licence notices).
+
 ## Milestone 5: Field test and ship (Sat 10-10 – Sun 10-11)
 - [~] T-023: Releases through DOCR pulled by the Droplet (added 2026-10-11, ADR 0008)
   - Estimate: ~2 h agent + ~30 min human
@@ -339,8 +363,8 @@ challenge*; this milestone replaces it.
 | REQ-003 | T-001, T-002a, T-005, T-016 (AC-003.13, AC-003.14) |
 | REQ-004 | T-005, T-001 + T-002b (AC-004.4) |
 | REQ-005 | T-005, T-006 |
-| REQ-006 | T-005, T-020 (AC-006.6) |
-| REQ-007 | T-006 |
+| REQ-006 | T-005, T-020 (AC-006.6), T-024 |
+| REQ-007 | T-006, T-024 |
 | REQ-008 | T-007 |
 | REQ-009 | T-008 (daily-pack case deferred with T-010) |
 | REQ-010 | T-009 |
@@ -357,7 +381,7 @@ challenge*; this milestone replaces it.
 | NFR-007 | T-002a, T-019 |
 | NFR-008 | T-012, T-015 |
 | NFR-009 | T-009, T-019 |
-| NFR-010 | T-011, T-020 |
+| NFR-010 | T-011, T-020, T-024 |
 | NFR-011 | T-002b, T-015 |
 | NFR-012 | T-016 |
 | NFR-013 | T-017 |
