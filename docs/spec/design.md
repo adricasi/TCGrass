@@ -244,10 +244,10 @@ naming any missing or invalid key without printing values (AC-012.2), or if
   `gemma` on the laptop; SQLite file in `./.dev/` (git-ignored; `./data` is the Compose volume and is off-limits to agents). Camera testing on a phone over HTTPS via
   `docker compose up` with Caddy's internal CA or a tunnel.
 - **Prod**: one Droplet (Ubuntu LTS, unattended-upgrades on), created by hand and tagged per
-  ADR 0002, prepared once with `deploy/droplet/setup.sh`. Releases (ADR 0008): a merge to
-  `main` builds and pushes `tcgrass-api:sha-<commit>` to DOCR; after the operator approves the
-  `production` environment, `:prod` points at it and the Droplet's agent deploys it by digest
-  within a minute (steps in `docs/deploy.md`; agents never deploy). No redeploys during the field test. Caddy obtains
+  ADR 0002, prepared once with `deploy/droplet/setup.sh`. Releases (ADR 0008): the operator
+  runs the `deploy` workflow by hand on `main` (manual only since 2026-10-11; the push trigger
+  returns with environment secrets), which builds and pushes `tcgrass-api:sha-<commit>` to DOCR
+  and points `:prod` at it; the Droplet's agent deploys it by digest within a minute (steps in `docs/deploy.md`; agents never deploy). No redeploys during the field test. Caddy obtains
   a certificate for `PUBLIC_HOSTNAME`: `tcgrass.duckdns.org` since 2026-10-11 (duckdns.org is
   on the Public Suffix List), before that `<reserved-ip with dashes>.sslip.io` (neither
   sslip.io nor nip.io is on the list, so they share Let's Encrypt's per-domain limits).

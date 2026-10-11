@@ -60,11 +60,11 @@ code still supports a GPU Droplet running vLLM for short private sessions (set
   `/opt/tcgrass/.env` (mode 600). See [deploy.md § 5 Security model](deploy.md#5-security-model).
 
 ## How a release reaches DigitalOcean
-1. **Build (GitHub Actions, on every push to `main`):** a pinned BuildKit builds the image with
-   an SBOM and provenance attestation; CI logs in to DOCR with `doctl registry login` using
-   credentials that expire within minutes, and pushes `tcgrass-api:sha-<commit>`.
-2. **Release (a manual "Run workflow"):** the workflow points `:prod` at the chosen commit's
-   image. That click is the approval.
+1. **Build (GitHub Actions, started by hand with "Run workflow"; that click is the approval):**
+   a pinned BuildKit builds the chosen commit of `main` with an SBOM and provenance attestation;
+   CI logs in to DOCR with `doctl registry login` using credentials that expire within minutes,
+   and pushes `tcgrass-api:sha-<commit>` (an existing image is reused, so rollbacks are quick).
+2. **Release (the same run):** the workflow points `:prod` at that image.
 3. **Deploy (on the Droplet):** a systemd timer runs the `tcgrass-deploy` agent every minute. It
    resolves `:prod` to a digest with **read-only** registry credentials and, when it changes,
    pulls by digest, seeds the deck (idempotent), runs `docker compose up -d --wait` and records
