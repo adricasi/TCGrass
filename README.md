@@ -8,9 +8,15 @@
 Photograph a real flower, tree or animal, and an open-weight Gemma model turns it into an
 illustrated card for your binder. Then trade your finds with friends.
 
-[![ci-node](https://github.com/adricasi/TCGrass/actions/workflows/ci-node.yml/badge.svg)](https://github.com/adricasi/TCGrass/actions/workflows/ci-node.yml)
-[![security](https://github.com/adricasi/TCGrass/actions/workflows/security.yml/badge.svg)](https://github.com/adricasi/TCGrass/actions/workflows/security.yml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-4f6b3a.svg)](LICENSE)
+[![Tests](https://img.shields.io/github/actions/workflow/status/adricasi/TCGrass/ci-node.yml?branch=main&label=tests&logo=vitest&logoColor=white)](https://github.com/adricasi/TCGrass/actions/workflows/ci-node.yml)
+[![Security](https://img.shields.io/github/actions/workflow/status/adricasi/TCGrass/security.yml?branch=main&label=security&logo=githubactions&logoColor=white)](https://github.com/adricasi/TCGrass/actions/workflows/security.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-4f6b3a.svg)](LICENSE)
+<br>
+[![Powered by Gemma](https://img.shields.io/badge/powered%20by-Gemma%204-4285F4?logo=google&logoColor=white)](docs/gemma.md)
+[![Deployed on DigitalOcean](https://img.shields.io/badge/deployed%20on-DigitalOcean-0080FF?logo=digitalocean&logoColor=white)](docs/digitalocean.md)
+[![Hacktoberfest 2026](https://img.shields.io/badge/Hacktoberfest-2026-1A1A2E?logo=hacktoberfest&logoColor=white)](https://dev.to/challenges/hf26)
+[![#hf26challenge](https://img.shields.io/badge/DEV-%23hf26challenge-0A0A0A?logo=devdotto&logoColor=white)](https://dev.to/t/hf26challenge)
+[![Touch Grass](https://img.shields.io/badge/theme-Touch%20Grass-4f6b3a)](https://dev.to/challenges/hf26)
 
 [**Play now →** tcgrass.duckdns.org](https://tcgrass.duckdns.org/) ·
 [How it works](#how-it-works) · [Gemma](docs/gemma.md) · [DigitalOcean](docs/digitalocean.md) ·
@@ -267,6 +273,11 @@ Contributions are welcome: new decks, bug fixes, accessibility improvements and 
 - **Card art:** AI-generated with the Gemini app (Google); see the expansion's `license.images`.
 - **Fonts:** Fraunces, Figtree and Caveat (SIL OFL 1.1). **Icons:** Lucide (ISC/MIT). Details:
   [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
-- **Model:** [Gemma](https://ai.google.dev/gemma) by Google, under the Gemma terms of use.
+- **Model:** [Gemma](https://ai.google.dev/gemma) by Google, used under the
+  [Gemma Terms of Use](https://ai.google.dev/gemma/terms); TCGrass calls it, it doesn't
+  redistribute the weights.
+- **Hosting:** runs on [DigitalOcean](https://www.digitalocean.com/) (Droplet, Volumes, Container
+  Registry, serverless inference) under DigitalOcean's terms of service; see
+  [docs/digitalocean.md](docs/digitalocean.md).
 - **Built with AI assistance:** developed spec-first with Claude Code as the coding agent and
   Gemini as a reviewer; every change was reviewed and tested by a human.
