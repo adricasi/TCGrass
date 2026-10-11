@@ -382,7 +382,14 @@ challenge*; this milestone replaces it.
     - Patch cadence: Dependabot/Renovate and a monthly base-image rebuild.
     - Migration policy after the challenge week: back up before every migration.
     - NFR-013 load and size check against a seeded DB; add any missing indexes.
-    - A permanent hostname (own domain, or sslip.io's rate-limit/PSL status confirmed).
+    - A permanent hostname (own domain, or sslip.io's rate-limit/PSL status confirmed), with
+      Caddy's `caddy_data` on the Volume so a rebuilt Droplet keeps its certificate.
+    - Added 2026-10-11 (deployment review): image signing in CI (cosign keyless) verified by
+      the deploy agent before a pull; scheduled Volume snapshots; DOCR basic tier or tag
+      pruning; reminders or alerts for expiring registry credentials and the CI token;
+      `harden-ssh.sh` and SSH closed when unused; environment-gated releases before the
+      repository goes public (ADR 0008); a scripted rebuild (`doctl`) and `.env` values in a
+      password manager; a CPU limit for the API container.
   - Done when: restore drill documented; privacy notice live and linked; uptime, cap and billing
     alerts set; load check meets NFR-013.
 

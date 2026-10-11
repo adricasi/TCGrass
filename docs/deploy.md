@@ -14,7 +14,8 @@ phone ──HTTPS──▶ Caddy :443 (Let's Encrypt) ──HTTP──▶ api :3
 ```
 
 ## 1. Infrastructure (once, by hand, ADR 0002)
-In the DigitalOcean console, all in **AMS3**. Tag every resource with `app:tcgrass`,
+In the DigitalOcean console, all in **AMS3**. Put every resource in a DO **Project**
+`tcgrass`, and tag the ones that support tags (Droplet, Volume) with `app:tcgrass`,
 `env:prod`, `owner:adricasi` and `managed-by:manual`.
 
 - [ ] **Droplet:** Ubuntu 24.04 LTS, Basic 1 GB, SSH key login only, monitoring on (default VPC).
@@ -110,11 +111,13 @@ environment secrets or required reviewers for private repositories, so the workf
   git apply .reviews/ci-node.patch`, then review and commit them yourself.
 - [ ] **Variable** (Settings → Secrets and variables → Actions → Variables):
   `DO_REGISTRY_NAME=tcgrass`.
-- [ ] **Repository secrets** (same page → Secrets): `DO_REGISTRY_USERNAME` (your DO account
-  email) and `DO_REGISTRY_TOKEN`, a DO API token with only `registry:read` + `registry:update`
-  and an expiry date. DO's docs don't say which scopes a push needs; widen only if the push
-  is refused. In a private repository only collaborators (you) can run workflows that read
-  them; **keep it that way** (no other collaborators with write access).
+- [ ] **Repository secret** (same page → Secrets): `DO_REGISTRY_TOKEN`, a DO API token with
+  only `registry:read` + `registry:update` (the scopes DO's API reference lists for
+  `/v2/registry/docker-credentials`) and an expiry date. The workflow uses it only to mint
+  registry credentials that expire in 15–25 minutes; it never runs `docker login`, so
+  `DO_REGISTRY_USERNAME` is no longer needed (delete it). In a private repository only
+  collaborators (you) can run workflows that read it; **keep it that way** (no other
+  collaborators with write access). The workflow refuses to run if the repository is public.
 - [ ] **Branch protection** on `main` if your plan offers it for private repositories.
 
 **Before making the repository public**, switch to the reviewed public mode: environments
@@ -144,8 +147,10 @@ Follow it on the Droplet: `journalctl -u tcgrass-deploy -f`.
 
 **Freeze:** during the field test, don't run the release (NFR-003).
 
-**Registry space:** the starter tier holds 500 MiB. Delete old `sha-*` tags in the console and
-run the registry's garbage collection, or move to the basic tier.
+**Registry space:** the starter tier holds 500 MiB, only a few images. When it is full, builds
+fail and nothing can be released. Delete old `sha-*` tags in the console (**never** the one
+`:prod` points to: same digest as `/opt/tcgrass/.deployed-image`), then run the registry's
+garbage collection; or move to the basic tier ($5/month).
 
 ### Check
 ```bash
@@ -178,13 +183,22 @@ running stack (`tcgrass-compose down` in `/opt/tcgrass`), clone the repository,
   config-only restart like this one is allowed until Sun 09:30 CEST (product.md Q-12).
 - **Rollback:** see § 3 (re-run the release with an earlier commit). Migrations are additive
   during the challenge week, so the DB stays compatible.
-- **Registry credentials** on the Droplet expire after 90 days: repeat § 2a before then.
+- **Expiring credentials** (put reminders in your calendar): the Droplet's registry
+  credentials (90 days from § 2a: repeat it) and `DO_REGISTRY_TOKEN` (its expiry date:
+  create a new token, update the secret). Expired credentials stop releases, not the running
+  app; the agent logs `could not resolve … :prod` every minute.
+- **Certificates** live in Caddy's `caddy_data` Docker volume on the **boot disk**: a rebuilt
+  Droplet must request a new certificate, which can hit sslip.io's shared Let's Encrypt limit.
+  Renewals happen automatically. Use the exact `PUBLIC_HOSTNAME` as the URL (sslip.io accepts
+  dashes or dots, but the certificate covers only the configured form).
 - **Backups (NFR-003):** the API writes one online backup per UTC day to
   `${DATA_DIR}/backups/tcgrass-YYYY-MM-DD.db` (at startup if today's is missing, then checked
   hourly) and keeps the newest 7. Each run logs `backup_done`, or `backup_failed` at error level.
   They live on the same Volume as the DB; the off-box copy is T-017.
 - **Restore** (everything after that backup is lost):
   ```bash
+  set -u
+  DATA_DIR=<VOL>/tcgrass                  # the same value as in /opt/tcgrass/.env
   B=${DATA_DIR}/backups/tcgrass-YYYY-MM-DD.db
   sudo sqlite3 "$B" 'PRAGMA integrity_check'   # must print "ok"
   tcgrass-compose stop api
