@@ -118,7 +118,7 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
     loads 15 cards; `GET /api/expansion` returns 15 cards with odds. Production seed command is
     `npm run seed:prod` (compiled; the runtime image has no tsx). 👤 prod seed waits for T-002b.
 
-- [~] T-004: Anonymous players + auth
+- [x] T-004: Anonymous players + auth
   - Estimate: 0.75 h
   - Requirements: REQ-002, REQ-013 (AC-013.2)
   - Depends on: T-003
@@ -129,8 +129,9 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
     found → create new" screen on 401.
   - Done when: tests for AC-002.1–002.10 and AC-013.2 pass;
     reopening the app on the phone resumes the same player.
+  - Confirmed (2026-10-11, author): reopening the app resumes the same player. Done.
 
-- [~] T-005: Capture → mint → instant reveal
+- [x] T-005: Capture → mint → instant reveal
   - Estimate: 1.5 h
   - Requirements: REQ-003, REQ-004, REQ-005, REQ-006
   - Depends on: T-004
@@ -143,6 +144,7 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
     AC-006.1–006.5 pass; a photo on the phone produces a revealed card stored in the DB.
   - Audit (2026-10-11): every AC above has a named test; AC-006.5 was the last one, added as a
     jsdom component test (`test/ui/capture-reveal.test.tsx`). Waiting on 👤: phone check.
+  - Confirmed (2026-10-11, author): a photo on the phone produced a revealed card stored in the DB. Done.
 
 - [x] T-016: Daily model-call caps (added 2026-10-10, ADR 0006)
   - Estimate: 0.75 h
@@ -158,7 +160,7 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
     captures don't overshoot, a restart keeps the counts). Not cuttable if the deploy uses
     pay-per-use inference.
 
-- [~] T-006: Binder + odds view
+- [x] T-006: Binder + odds view
   - Estimate: 0.75 h
   - Requirements: REQ-007, REQ-005 (AC-005.4)
   - Depends on: T-005
@@ -167,9 +169,10 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
     navigation (Capture · Binder · Friends · Inbox).
   - Done when: tests for AC-007.1–007.3 and AC-005.4 pass; binder correct on the phone after
     3 captures.
+  - Confirmed (2026-10-11, author): binder correct after 3 captures; odds open. Done.
 
 ## Milestone 3: Social (Sat 10-10 afternoon)
-- [~] T-007: Friend requests + friends' binders
+- [x] T-007: Friend requests + friends' binders
   - Estimate: 1 h
   - Requirements: REQ-008
   - Depends on: T-006
@@ -181,6 +184,7 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
     binders.
   - Audit (2026-10-11): every AC above has a named test; AC-008.1 was the last one
     (`test/ui/profile.test.tsx`). Waiting on 👤: two-phone check.
+  - Confirmed (2026-10-11, author): two phones became friends and saw each other's binders. Done.
 
 - [x] T-008: Trade offers: create, cancel, sent list
   - Estimate: 0.75 h
@@ -194,7 +198,7 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
     limit) and AC-009.8 (10 pending offers per pair) added to the spec and built on this branch.
     T-009: add a test that a *declined* offer also frees an AC-009.8 slot.
 
-- [~] T-009: Inbox: accept/decline with atomic swap + badge
+- [x] T-009: Inbox: accept/decline with atomic swap + badge
   - Estimate: 1 h
   - Requirements: REQ-010, NFR-009
   - Depends on: T-008
@@ -203,6 +207,7 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
     every 20 s while the app is visible.
   - Done when: tests for AC-010.1–010.8 pass; the NFR-009 randomized invariant test (500
     seeded actions) passes; a trade between two phones completes and both binders update.
+  - Confirmed (2026-10-11, author): a trade between two phones completed and both binders updated. Done.
 
 ## Milestone 4: Capture cooldown and reveal polish (Sat 10-10, after the deploy works)
 Changed 2026-10-10 (author decision): the daily trading pack (T-010) moved to *After the
@@ -231,7 +236,7 @@ challenge*; this milestone replaces it.
     decimal hours, refused capture doesn't extend it). Tests run with the cooldown off unless a
     test sets it (`testApp` default 0).
 
-- [~] T-020: Reveal animation and visual polish (timeboxed: 1.5 h)
+- [x] T-020: Reveal animation and visual polish (timeboxed: 1.5 h)
   - Estimate: 1.5 h, hard stop
   - Requirements: REQ-006 (AC-006.6), NFR-010
   - Depends on: T-005; start only once the deployed build works on a phone (T-002b)
@@ -254,8 +259,9 @@ challenge*; this milestone replaces it.
     glow on foil cards. UI tests follow the project's pattern (pure module + stylesheet checks)
     rather than @testing-library/preact, which isn't installed. 471 tests. Review: code-reviewer,
     no Blockers; Should-fix applied.
+  - Confirmed (2026-10-11, author): reveal animation and tap-to-skip checked on Chrome Android and Safari iOS; screenshots taken. Done.
 
-- [~] T-024: Field Journal visual redesign (added 2026-10-11, ADR 0009, author decision)
+- [x] T-024: Field Journal visual redesign (added 2026-10-11, ADR 0009, author decision)
   - Estimate: ~3–4 h
   - Requirements: REQ-006 (AC-006.1–006.6), REQ-007, NFR-010
   - Depends on: T-020
@@ -275,6 +281,7 @@ challenge*; this milestone replaces it.
     service worker keeps cached fonts. Checked with headless screenshots at 390 px (no console or
     CSP errors). 478 tests. Review: code-reviewer, no Blockers; Should-fix applied (silhouette
     kept per AC-007.1, error-text and input-border contrast, licence notices).
+  - Confirmed (2026-10-11, author): Field Journal look checked on a phone; before/after screenshots taken. Done.
 
 ## Milestone 5: Field test and ship (Sat 10-10 – Sun 10-11)
 - [x] T-023: Releases through DOCR pulled by the Droplet (added 2026-10-11, ADR 0008)
@@ -296,7 +303,7 @@ challenge*; this milestone replaces it.
     https://143.198.251.237.sslip.io/ (T-002b closed). Open 👤 housekeeping, not in Done when:
     delete the unused `DO_REGISTRY_USERNAME` secret.
 
-- [~] T-011: Pre-field-test hardening
+- [x] T-011: Pre-field-test hardening
   - Estimate: 0.5 h
   - Requirements: NFR-001, NFR-002, NFR-003, NFR-005, NFR-010
   - Depends on: T-005
@@ -317,6 +324,7 @@ challenge*; this milestone replaces it.
     Should-fix applied (private file modes, safe restore with `install` + integrity check,
     shutdown during a backup, leftover `.partial` test). Waiting on 👤: run the checklist on
     Chrome Android and Safari iOS; confirm firewall rules and tags.
+  - Confirmed (2026-10-11, author): field-test checklist passed on Chrome Android and Safari iOS; firewall rules and tags confirmed. Done.
 
 - [x] T-012: 👤 Card art for Everyday Nature
   - Estimate: ~1 h of the human's time, outside build hours
@@ -330,7 +338,7 @@ challenge*; this milestone replaces it.
   - Result (2026-10-09): done. 15 cards at 768×1145 (2:3, spec changed from 3:4), 4.3 MB total;
     seed runs without placeholders; `license.images` = Gemini app (Google), Google ToS cited.
 
-- [~] T-013: Installable PWA
+- [x] T-013: Installable PWA
   - Estimate: 0.25 h
   - Requirements: REQ-013 (AC-013.1)
   - Depends on: T-002a; do before T-014 so iOS testers install first
@@ -345,6 +353,7 @@ challenge*; this milestone replaces it.
     `/assets` cache-first and pruned per deploy, never `/api` or `/cards`), registered after
     `load` in production. 20 new tests. Waiting on 👤: install check on Chrome Android and
     Safari iOS once deployed (T-002b).
+  - Confirmed (2026-10-11, author): installed and opened standalone on Android and iOS (AC-013.1). Done.
 
 - [ ] T-014: 👤 Field test (Sun 2026-10-11 10:00–12:30 CEST, regardless of state)
   - Requirements: success metrics in product.md; NFR-003, NFR-004
