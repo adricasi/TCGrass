@@ -248,10 +248,9 @@ naming any missing or invalid key without printing values (AC-012.2), or if
   `main` builds and pushes `tcgrass-api:sha-<commit>` to DOCR; after the operator approves the
   `production` environment, `:prod` points at it and the Droplet's agent deploys it by digest
   within a minute (steps in `docs/deploy.md`; agents never deploy). No redeploys during the field test. Caddy obtains
-  a certificate for `PUBLIC_HOSTNAME` = `<reserved-ip with dashes>.sslip.io`. Checked
-  2026-10-10: neither sslip.io nor nip.io is on the Public Suffix List, so both share Let's
-  Encrypt's per-domain limits; if issuance is rate-limited, use a hostname under a listed
-  domain (e.g. duckdns.org).
+  a certificate for `PUBLIC_HOSTNAME`: `tcgrass.duckdns.org` since 2026-10-11 (duckdns.org is
+  on the Public Suffix List), before that `<reserved-ip with dashes>.sslip.io` (neither
+  sslip.io nor nip.io is on the list, so they share Let's Encrypt's per-domain limits).
 - **CI** (GitHub Actions, existing): lint, typecheck, tests with coverage, build (server +
   PWA), `npm audit --audit-level=high`, gitleaks, Docker image build (no push).
 - Rollout / rollback: release a commit of `main` (while the repository is private: "Run workflow"
@@ -291,7 +290,7 @@ Estimates, to be checked against DigitalOcean's pricing page when the resources 
 | DO Volume 10 GB | ~$1 / month |
 | GPU Droplet (only if that path is chosen), ~10 h of existence (billed while it exists, even powered off) | ~$8–16 total |
 | DO serverless inference (if chosen) | per-token, likely < $5 for the week |
-| Hostname | $0 (`sslip.io`); a Reserved IP is free while attached |
+| Hostname | $0 (DuckDNS `tcgrass.duckdns.org`); a Reserved IP is free while attached |
 | **Challenge week total** | **≤ $25** (NFR-006); idle afterwards ≤ $12/month or $0 if destroyed |
 | **Production, per month** (G-7, ADR 0006) | App Droplet + Volume ≈ $13; DO serverless Gemma 4 ≈ $0.0003/capture ($0.18/$0.50 per 1M tokens, 2026-10-10), at most ≈ $30 at the default 3,000 calls/day cap; off-box backups ≈ $5 (to be confirmed); **≤ $50** (NFR-015). An always-on RTX 4000 Ada GPU Droplet would be ≈ $555/month, so it is used only for short private bursts |
 

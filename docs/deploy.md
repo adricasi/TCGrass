@@ -35,7 +35,11 @@ Install Docker Engine and the Compose plugin from Docker's apt repository
 (<https://docs.docker.com/engine/install/ubuntu/>) and check `docker compose version`.
 
 ### Hostname
-`PUBLIC_HOSTNAME` is `<reserved-ip-with-dashes>.sslip.io`, e.g. `203-0-113-7.sslip.io`.
+Production (since 2026-10-11): `PUBLIC_HOSTNAME=tcgrass.duckdns.org`, a free DuckDNS name with
+an A record pointing at the Reserved IP. duckdns.org is on the Public Suffix List, so it doesn't
+share Let's Encrypt's limit with other users. The first deploy used
+`<reserved-ip-with-dashes>.sslip.io` (e.g. `203-0-113-7.sslip.io`), which still works for a
+quick start:
 
 **Check (2026-10-10): neither sslip.io nor nip.io is on the Public Suffix List.** Every user of
 either service shares Let's Encrypt's per-domain certificate limit, so issuance can fail. After
@@ -192,9 +196,12 @@ running stack (`tcgrass-compose down` in `/opt/tcgrass`), clone the repository,
   create a new token, update the secret). Expired credentials stop releases, not the running
   app; the agent logs `could not resolve … :prod` every minute.
 - **Certificates** live in Caddy's `caddy_data` Docker volume on the **boot disk**: a rebuilt
-  Droplet must request a new certificate, which can hit sslip.io's shared Let's Encrypt limit.
-  Renewals happen automatically. Use the exact `PUBLIC_HOSTNAME` as the URL (sslip.io accepts
-  dashes or dots, but the certificate covers only the configured form).
+  Droplet must request a new certificate (fine for duckdns.org; an sslip.io name can hit the
+  shared Let's Encrypt limit). Renewals happen automatically. Use the exact `PUBLIC_HOSTNAME` as
+  the URL: the certificate covers only that name.
+- **Changing the hostname** changes the web origin. Players are stored in the browser per
+  origin, so players created under the old name can't be reached from the new one, and an
+  installed PWA keeps opening the old name. Announce it before switching.
 - **Backups (NFR-003):** the API writes one online backup per UTC day to
   `${DATA_DIR}/backups/tcgrass-YYYY-MM-DD.db` (at startup if today's is missing, then checked
   hourly) and keeps the newest 7. Each run logs `backup_done`, or `backup_failed` at error level.

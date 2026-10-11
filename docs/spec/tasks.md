@@ -100,7 +100,8 @@ budget by ~1.5 h** (accepted 2026-10-07; the overrun comes out of the cut list o
     test, `curl -I` redirect. sslip.io and nip.io are **not** on the Public Suffix List
     (checked 2026-10-10): fallback is a hostname under a listed domain (e.g. duckdns.org).
   - Result (2026-10-11): done. Deployed at https://143.198.251.237.sslip.io/ through T-023's
-    release path; the author confirmed it works on a phone.
+    release path; the author confirmed it works on a phone. Later the same day the author moved
+    `PUBLIC_HOSTNAME` to https://tcgrass.duckdns.org/ (on the Public Suffix List).
 
 ## Milestone 2: Collect (T-003 Fri evening; rest Sat 10-10 morning)
 - [x] T-003: Database + expansion seed command
@@ -416,8 +417,9 @@ challenge*; this milestone replaces it.
     - Patch cadence: Dependabot/Renovate and a monthly base-image rebuild.
     - Migration policy after the challenge week: back up before every migration.
     - NFR-013 load and size check against a seeded DB; add any missing indexes.
-    - A permanent hostname (own domain, or sslip.io's rate-limit/PSL status confirmed), with
-      Caddy's `caddy_data` on the Volume so a rebuilt Droplet keeps its certificate.
+    - A permanent hostname: `tcgrass.duckdns.org` since 2026-10-11 (an own domain later is
+      optional); still to do: Caddy's `caddy_data` on the Volume so a rebuilt Droplet keeps its
+      certificate.
     - Added 2026-10-11 (deployment review): image signing in CI (cosign keyless) verified by
       the deploy agent before a pull; scheduled Volume snapshots; DOCR basic tier or tag
       pruning; reminders or alerts for expiring registry credentials and the CI token;

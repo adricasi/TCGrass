@@ -166,7 +166,8 @@ reconfirmed 2026-10-07).
 - [x] Q-5 (brief Q-7): Daily trading pack shared or per player? → **Per player**, fixed for the UTC day (2026-10-07).
 - [x] Q-6 (brief Q-8): Which tool/model generates the art (terms allow publication; ideally open)? → **Gemini app (Google), model "Gemini"** (2026-10-09). Google ToS (effective 2026-07-30): Google won't claim ownership of generated content; AI content must not be presented as human-made, so the art is labelled AI-generated (`license.images`, post).
 - [x] Q-7: Which inference path is used: DO serverless Gemma, vLLM on a GPU Droplet, or Ollama on a laptop? → **DO serverless `gemma-4-31B-it`** for the field test and production (2026-10-10, ADR 0006 accepted). Earlier: `gemma4:e4b` on laptop Ollama scored 18/18 but p95 14.8 s.
-- [x] Q-8: Which hostname is used for HTTPS? → free `<droplet-ip>.sslip.io` name (2026-10-07).
+- [x] Q-8: Which hostname is used for HTTPS? → free `<droplet-ip>.sslip.io` name (2026-10-07);
+  moved to `tcgrass.duckdns.org` on 2026-10-11 (author decision).
 - [~] Q-9: DO serverless is **allowed** (decided 2026-10-07) and is the production path (ADR 0006, 2026-10-10); still open: cite DigitalOcean's data-use, retention and training-use terms for prompts/images in the privacy notice, the post and design.md. Part of accepting ADR 0006.
 - [x] Q-10 (added 2026-10-10): Does DO serverless Gemma 4 accept images and pass the spike? → **Yes, with latency accepted** (2026-10-10): DO serverless `gemma-4-31B-it`, 19 spike photos (2026-10-10): 89 % correct (17/19; 12/13 catalogue, 3/3 none, 2/3 screens — the miss became `none`, nothing minted), 100 % parseable, 1 timeout, latency p50 9.1 s / p95 26.4 s; flavor lines clean. The author accepted the latency; NFR-004 revised.
 - [ ] Q-11 (added 2026-10-10): Privacy notice and terms for the public product: photos sent to
