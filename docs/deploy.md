@@ -209,12 +209,15 @@ review. Repository secrets in a public repository could be targeted by pull requ
 ## 3. Release (ADR 0008)
 Paused since 2026-10-11 (see § 2e); this is how it works once restored.
 
-1. Merge to `main`. The `build` job of `deploy.yml` pushes `tcgrass-api:sha-<commit>`; wait
-   until it is green.
+Builds are **manual** since 2026-10-11: nothing runs on push (the trigger is commented out in
+`deploy.yml`, to be restored together with environment secrets).
+
+1. Merge to `main`.
 2. **Release = your click:** Actions → **deploy** → **Run workflow** → branch `main`, leave
    *commit* empty for the latest `main` (or paste a full SHA of a commit on `main`) → **Run
-   workflow**. The `release` job refuses commits that aren't on `main` or have no image yet.
-3. It points `:prod` at that image. Within a minute the Droplet's agent resolves the
+   workflow**. The `build` job refuses commits that aren't on `main`, then builds and pushes
+   `tcgrass-api:sha-<commit>`, or reuses that image if it already exists (quick rollbacks).
+3. The `release` job points `:prod` at that image. Within a minute the Droplet's agent resolves the
    digest, pulls it, seeds the expansion (idempotent; migrations are additive) and runs
    `docker compose up -d --wait`. A release is recorded in `/opt/tcgrass/.deployed-image` only
    once the stack is healthy.
