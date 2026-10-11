@@ -49,14 +49,24 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-      # DigitalOcean's official action installs doctl (pinned); no_auth keeps the DO token out of any
-      # config file. `doctl registry login` reads the token from the environment and stores
+      # doctl comes from the official release, checked against a fixed checksum; the DO token
+      # stays out of any config file. `doctl registry login` reads it from the environment and stores
       # registry credentials that expire in 25 minutes (longer than the job's 20-minute timeout,
       # since BuildKit authenticates again at push time), so nothing long-lived lands on the runner.
-      - uses: digitalocean/action-doctl@3cb3953159719656269e044e0e24ca16dd2a690f # v2.5.2
-        with:
-          version: 1.175.0
-          no_auth: true
+      - name: Install doctl (checksum-verified)
+        env:
+          DOCTL_VERSION: 1.175.0
+          # From doctl-1.175.0-checksums.sha256 of the official release; the job stops here if the
+          # download differs, before the DO token is used. Bump both together.
+          DOCTL_SHA256: c722a6d48fab51a5edf6926e1ddc07ed58481184cad19e187ed39a2c0dc297f4
+        run: |
+          archive="$RUNNER_TEMP/doctl.tar.gz"
+          curl -fsSL --max-time 60 -o "$archive" \
+            "https://github.com/digitalocean/doctl/releases/download/v$DOCTL_VERSION/doctl-$DOCTL_VERSION-linux-amd64.tar.gz"
+          echo "$DOCTL_SHA256  $archive" | sha256sum -c -
+          install -d "$RUNNER_TEMP/bin"
+          tar -xzf "$archive" -C "$RUNNER_TEMP/bin" doctl
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
       - name: Log in to DigitalOcean Container Registry (short-lived)
         env:
           DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DO_REGISTRY_TOKEN }}
@@ -120,13 +130,23 @@ jobs:
             exit 1
           fi
           echo "sha=$commit" >> "$GITHUB_OUTPUT"
-      # DigitalOcean's official action installs doctl (pinned); no_auth keeps the DO token out of any
-      # config file. `doctl registry login` reads the token from the environment and stores
+      # doctl comes from the official release, checked against a fixed checksum; the DO token
+      # stays out of any config file. `doctl registry login` reads it from the environment and stores
       # registry credentials that expire in 15 minutes, so nothing long-lived lands on the runner.
-      - uses: digitalocean/action-doctl@3cb3953159719656269e044e0e24ca16dd2a690f # v2.5.2
-        with:
-          version: 1.175.0
-          no_auth: true
+      - name: Install doctl (checksum-verified)
+        env:
+          DOCTL_VERSION: 1.175.0
+          # From doctl-1.175.0-checksums.sha256 of the official release; the job stops here if the
+          # download differs, before the DO token is used. Bump both together.
+          DOCTL_SHA256: c722a6d48fab51a5edf6926e1ddc07ed58481184cad19e187ed39a2c0dc297f4
+        run: |
+          archive="$RUNNER_TEMP/doctl.tar.gz"
+          curl -fsSL --max-time 60 -o "$archive" \
+            "https://github.com/digitalocean/doctl/releases/download/v$DOCTL_VERSION/doctl-$DOCTL_VERSION-linux-amd64.tar.gz"
+          echo "$DOCTL_SHA256  $archive" | sha256sum -c -
+          install -d "$RUNNER_TEMP/bin"
+          tar -xzf "$archive" -C "$RUNNER_TEMP/bin" doctl
+          echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
       - name: Log in to DigitalOcean Container Registry (short-lived)
         env:
           DIGITALOCEAN_ACCESS_TOKEN: ${{ secrets.DO_REGISTRY_TOKEN }}
