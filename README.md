@@ -13,7 +13,8 @@ illustrated card for your binder. Then trade your finds with friends.
 [![License: MIT](https://img.shields.io/badge/License-MIT-4f6b3a.svg)](LICENSE)
 
 [**Play now →** tcgrass.duckdns.org](https://tcgrass.duckdns.org/) ·
-[How it works](#how-it-works) · [Run it yourself](#run-it-yourself) ·
+[How it works](#how-it-works) · [Gemma](docs/gemma.md) · [DigitalOcean](docs/digitalocean.md) ·
+[Run it yourself](#run-it-yourself) ·
 [Make your own deck](docs/expansions.md) · [Contributing](CONTRIBUTING.md)
 
 </div>
@@ -25,6 +26,8 @@ illustrated card for your binder. Then trade your finds with friends.
 - [Features](#features)
 - [Screenshots](#screenshots)
 - [How it works](#how-it-works)
+- [Powered by Gemma](#powered-by-gemma)
+- [Deployed on DigitalOcean](#deployed-on-digitalocean)
 - [Why open](#why-open)
 - [Run it yourself](#run-it-yourself)
 - [Configuration](#configuration)
@@ -91,6 +94,41 @@ flowchart LR
 
 Design details: [docs/spec/design.md](docs/spec/design.md) and the
 [architecture decision records](docs/adr/).
+
+## Powered by Gemma
+Every capture is one call to Google's open-weight **Gemma** vision model. Full write-up with code
+links: **[docs/gemma.md](docs/gemma.md)**.
+
+- **Models:** Gemma 4 31B (`gemma-4-31B-it`) on DigitalOcean serverless inference in production;
+  Gemma 4 E4B (`gemma4:e4b`) on Ollama for local play; any Gemma on vLLM.
+- **The deck is the prompt:** the system prompt is built from the active expansion's catalogue
+  and identification hints ([`prompt.ts`](src/server/identify/prompt.ts)), so a forked deck
+  changes what Gemma recognises without code changes.
+- **One OpenAI-compatible call** with the photo as an image part, JSON output, a 30 s timeout,
+  no redirects and at most 5 calls in flight ([`client.ts`](src/server/identify/client.ts)).
+- **Untrusted output:** zod checks `card_id` against the catalogue
+  ([`answer.ts`](src/server/identify/answer.ts)); a fixed decision order handles screens,
+  "none" and low confidence; flavor lines are cleaned and shown as plain text.
+- **Gemma never picks the rarity:** the server rolls it with `crypto` in the mint transaction.
+- **Measured:** 18/18 correct with `gemma4:e4b` on Ollama and 17/19 (89 %) with
+  `gemma-4-31B-it` on DigitalOcean, on a labelled set of AI-generated photos
+  ([`spike-identify.ts`](scripts/spike-identify.ts)).
+
+## Deployed on DigitalOcean
+The whole stack runs on DigitalOcean. Architecture, costs and pipeline:
+**[docs/digitalocean.md](docs/digitalocean.md)**; runbook: [docs/deploy.md](docs/deploy.md).
+
+| Product | Used for |
+|---|---|
+| Serverless inference | Gemma 4 31B identifies every capture (pay per token, ≈ $0.0003 per capture, daily caps) |
+| Droplet + Volume + Reserved IP | Ubuntu 24.04 (1 GB) running Caddy and the API with Docker Compose; SQLite, logs and backups on a 10 GB Volume |
+| Cloud Firewall | Only 80/443 public; SSH from the operator's IP |
+| Container Registry | Images built in GitHub Actions, deployed by digest by a pull agent on the Droplet |
+| Projects, tags, monitoring, billing alert | Organisation, metrics and a spending guard |
+
+GitHub never connects to the Droplet: CI pushes images to DOCR, and a systemd timer on the
+Droplet pulls each approved release by digest, seeds, starts it and rolls back if it isn't
+healthy.
 
 ## Why open
 - **Swap the model, keep the game.** Every inference path speaks the same OpenAI-compatible API.
