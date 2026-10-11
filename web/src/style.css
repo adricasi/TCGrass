@@ -1,6 +1,53 @@
 :root {
   color-scheme: light dark;
-  font-family: system-ui, sans-serif;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  line-height: 1.4;
+  /* Design tokens (T-020) */
+  --accent: #24724a;
+  --accent-text: #fff;
+  --danger: #c0392b;
+  --rarity-common: #7d8a96;
+  --rarity-rare: #2f6fd6;
+  --rarity-epic: #8a3fd1;
+  --rarity-legendary: #d49a16;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --radius: 12px;
+  --border: color-mix(in srgb, CanvasText 20%, transparent);
+}
+
+/* Base button; zero specificity so every classed button (nav, links, binder cards) wins. */
+:where(button) {
+  min-height: 44px;
+  padding: var(--space-2) var(--space-4);
+  font: inherit;
+  color: inherit;
+  background: color-mix(in srgb, CanvasText 6%, Canvas);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  cursor: pointer;
+}
+
+:where(button):disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+:where(button):focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 2px;
+}
+
+h1,
+h2 {
+  line-height: 1.2;
 }
 
 body {
@@ -27,10 +74,18 @@ main {
   background: #222;
 }
 
+.shutter,
+.dismiss {
+  color: var(--accent-text);
+  font-weight: bold;
+  background: var(--accent);
+  border: none;
+  border-radius: 999px;
+}
+
 .shutter {
   font-size: 1.25rem;
   padding: 14px;
-  border-radius: 999px;
 }
 
 .result {
@@ -63,7 +118,7 @@ main {
 
 .error {
   min-height: 1.2em;
-  color: #c0392b;
+  color: var(--danger);
 }
 
 .player {
@@ -83,6 +138,8 @@ main {
   background: rgb(0 0 0 / 80%);
   /* Short screens: scroll instead of clipping the dismiss button (AC-006.5). */
   overflow-y: auto;
+  /* The entry animation's overshoot must not flash a horizontal scrollbar at 360 px. */
+  overflow-x: clip;
   justify-content: safe center;
 }
 
@@ -95,6 +152,13 @@ main {
   background: #fffaf0;
   color: #222;
   overflow: hidden;
+  /* Hides the mirrored back face during the Epic/Legendary entry spin. */
+  backface-visibility: hidden;
+}
+
+/* The dialog holds focus only during the entry (it has no visible control to outline). */
+.reveal:focus {
+  outline: none;
 }
 
 .card-art {
@@ -131,19 +195,23 @@ main {
 }
 
 .frame-common {
-  --frame: #7d8a96;
+  --frame: var(--rarity-common);
 }
 .frame-rare {
-  --frame: #2f6fd6;
+  --frame: var(--rarity-rare);
 }
 .frame-epic {
-  --frame: #8a3fd1;
+  --frame: var(--rarity-epic);
 }
 .frame-legendary {
-  --frame: #d49a16;
+  --frame: var(--rarity-legendary);
 }
 
-/* Animated foil for Epic and Legendary only (AC-006.2). */
+/* Animated foil for Epic and Legendary only (AC-006.2), with a glow in the frame colour. */
+.foil {
+  box-shadow: 0 0 24px 4px var(--frame);
+}
+
 .foil::after {
   content: "";
   position: absolute;
@@ -170,10 +238,59 @@ main {
   }
 }
 
+/* Reveal entry (AC-006.6): at most 2,000 ms including delay; ENTRY_FALLBACK_MS in
+   reveal-entry.ts matches the longest one. A tap removes .reveal-entering, jumping to the end. */
+.reveal-entering .entry-standard {
+  animation: entry-flip 700ms cubic-bezier(0.2, 0.8, 0.3, 1.2) both;
+}
+
+.reveal-entering .entry-foil {
+  animation: entry-spin-glow 1100ms cubic-bezier(0.2, 0.7, 0.2, 1) 300ms both;
+}
+
+.reveal-entering .dismiss {
+  visibility: hidden;
+}
+
+@keyframes entry-flip {
+  from {
+    transform: perspective(800px) rotateY(90deg) scale(0.85);
+    opacity: 0;
+  }
+  to {
+    transform: none;
+    opacity: 1;
+  }
+}
+
+@keyframes entry-spin-glow {
+  from {
+    transform: perspective(800px) rotateY(-540deg) scale(0.4);
+    filter: brightness(2.5);
+    box-shadow: 0 0 0 0 var(--frame);
+    opacity: 0;
+  }
+  60% {
+    transform: perspective(800px) rotateY(-20deg) scale(1.08);
+    filter: brightness(1.6);
+    box-shadow: 0 0 48px 16px var(--frame);
+    opacity: 1;
+  }
+  to {
+    transform: none;
+    filter: none;
+    box-shadow: 0 0 24px 4px var(--frame);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .foil::after {
     animation: none;
     background-position: 50% 0;
+  }
+
+  .reveal-entering .card {
+    animation: none;
   }
 }
 
@@ -210,7 +327,7 @@ main {
   justify-content: space-around;
   padding: 8px 8px calc(8px + env(safe-area-inset-bottom));
   background: Canvas;
-  border-top: 1px solid color-mix(in srgb, CanvasText 20%, transparent);
+  border-top: 1px solid var(--border);
 }
 
 .bottom-nav button {
@@ -289,16 +406,16 @@ main {
 }
 
 .count-common {
-  background: #7d8a96;
+  background: var(--rarity-common);
 }
 .count-rare {
-  background: #2f6fd6;
+  background: var(--rarity-rare);
 }
 .count-epic {
-  background: #8a3fd1;
+  background: var(--rarity-epic);
 }
 .count-legendary {
-  background: #d49a16;
+  background: var(--rarity-legendary);
 }
 
 /* Card detail (AC-007.2) */
@@ -365,7 +482,7 @@ main {
   margin-left: 4px;
   padding: 0 4px;
   border-radius: 999px;
-  background: #c0392b;
+  background: var(--danger);
   color: #fff;
   font-size: 0.8rem;
   font-weight: bold;
