@@ -49,6 +49,14 @@ digest** and records a release only once `docker compose up --wait` reports the 
 stack definition inside a pushed image would turn registry push into root on the host. Containers
 are blocked from the metadata service before Docker starts, and Docker waits for the data Volume.
 
+**Private-repository mode (2026-10-11, author decision).** While the repository is private on
+GitHub Free, environment secrets and required reviewers are unavailable (GitHub docs,
+*Deployments and environments*). Until it goes public, the registry secrets are repository
+secrets, builds run on every push to `main`, and a release runs only when the operator
+triggers `deploy` by hand on `main` (the click is the approval); the release job accepts only
+commits on `main` with an existing image. Before the repository is made public, it switches to
+the environment-gated mode above.
+
 ## Consequences
 - Positive: no SSH key or firewall-capable token in GitHub; port 22 stays limited to the
   operator; releases are approved, recorded by digest and reversible (re-run the release with an

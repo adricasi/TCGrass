@@ -101,26 +101,35 @@ key and turns off root login and passwords. Keep the root session open until a s
 can `ssh <username>@<reserved-ip>` and `sudo -v`.
 
 ### 2e. GitHub (once)
+The repository is **private** for now (author decision, 2026-10-11). GitHub Free has no
+environment secrets or required reviewers for private repositories, so the workflow runs in
+*private mode*: repository secrets, and a release is a manual "Run workflow" on `main`.
+
 - [ ] **Workflows** (agents can't edit `.github/workflows/`): from the repository root,
-  `cp .reviews/workflows/deploy.yml .github/workflows/ && git apply .reviews/ci-node.patch`,
-  then review and commit them yourself.
-- [ ] **Variable** (repository) `DO_REGISTRY_NAME=tcgrass`.
-- [ ] **Environment `registry`:** deployment branches `main` only, no reviewer.
-- [ ] **Environment `production`:** deployment branches `main` only, **you as required
-  reviewer**.
-- [ ] **Environment secrets in both** (never repository secrets, which any workflow could read):
-  `DO_REGISTRY_USERNAME` (your DO account email) and `DO_REGISTRY_TOKEN`, a DO API token used
-  only to push images, with an expiry date. DO's docs don't say which custom scopes a push
-  needs: try `registry:read` + `registry:update`, and widen only if the push is refused.
-- [ ] **Branch protection** on `main` (PR required, no force-push) and **`CODEOWNERS`**:
-  `cp .reviews/CODEOWNERS .github/` (you own `.github/` and `deploy/`), with "Require review
-  from Code Owners". The release approval is a release step, not a security boundary: anyone
-  who can change `main` can change the workflow.
+  `cp .reviews/workflows/deploy.yml .github/workflows/ && cp .reviews/CODEOWNERS .github/ &&
+  git apply .reviews/ci-node.patch`, then review and commit them yourself.
+- [ ] **Variable** (Settings → Secrets and variables → Actions → Variables):
+  `DO_REGISTRY_NAME=tcgrass`.
+- [ ] **Repository secrets** (same page → Secrets): `DO_REGISTRY_USERNAME` (your DO account
+  email) and `DO_REGISTRY_TOKEN`, a DO API token with only `registry:read` + `registry:update`
+  and an expiry date. DO's docs don't say which scopes a push needs; widen only if the push
+  is refused. In a private repository only collaborators (you) can run workflows that read
+  them; **keep it that way** (no other collaborators with write access).
+- [ ] **Branch protection** on `main` if your plan offers it for private repositories.
+
+**Before making the repository public**, switch to the reviewed public mode: environments
+`registry` and `production` (both limited to `main`; you as required reviewer on
+`production`), the two secrets moved into both environments and deleted at repository level,
+the environment-gated workflow (ask for it, ADR 0008), branch protection and `CODEOWNERS`
+review. Repository secrets in a public repository could be targeted by pull requests.
 
 ## 3. Release (ADR 0008)
-1. Merge to `main`. `deploy.yml` builds the image and pushes `tcgrass-api:sha-<commit>`.
-2. The `release` job waits for **your approval** (Actions → the run → Review deployments).
-3. Approving points `:prod` at that image. Within a minute the Droplet's agent resolves the
+1. Merge to `main`. The `build` job of `deploy.yml` pushes `tcgrass-api:sha-<commit>`; wait
+   until it is green.
+2. **Release = your click:** Actions → **deploy** → **Run workflow** → branch `main`, leave
+   *commit* empty for the latest `main` (or paste a full SHA of a commit on `main`) → **Run
+   workflow**. The `release` job refuses commits that aren't on `main` or have no image yet.
+3. It points `:prod` at that image. Within a minute the Droplet's agent resolves the
    digest, pulls it, seeds the expansion (idempotent; migrations are additive) and runs
    `docker compose up -d --wait`. A release is recorded in `/opt/tcgrass/.deployed-image` only
    once the stack is healthy.
@@ -131,10 +140,9 @@ can `ssh <username>@<reserved-ip>` and `sudo -v`.
 
 Follow it on the Droplet: `journalctl -u tcgrass-deploy -f`.
 
-**Rollback:** run the `deploy` workflow by hand ("Run workflow") with the full SHA of an earlier
-commit on `main`, and approve it.
+**Rollback:** "Run workflow" with the full SHA of an earlier commit on `main`.
 
-**Freeze:** during the field test, don't approve releases (NFR-003).
+**Freeze:** during the field test, don't run the release (NFR-003).
 
 **Registry space:** the starter tier holds 500 MiB. Delete old `sha-*` tags in the console and
 run the registry's garbage collection, or move to the basic tier.

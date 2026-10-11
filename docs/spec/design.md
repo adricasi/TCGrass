@@ -254,8 +254,9 @@ naming any missing or invalid key without printing values (AC-012.2), or if
   domain (e.g. duckdns.org).
 - **CI** (GitHub Actions, existing): lint, typecheck, tests with coverage, build (server +
   PWA), `npm audit --audit-level=high`, gitleaks, Docker image build (no push).
-- Rollout / rollback: approve the release of a commit; rollback = run `deploy` by hand with an
-  earlier commit and approve it. DB migrations are additive only during the challenge week.
+- Rollout / rollback: release a commit of `main` (while the repository is private: "Run workflow"
+  by hand; once public: approval of the `production` environment, ADR 0008); rollback = release
+  an earlier commit. DB migrations are additive only during the challenge week.
 
 ## Testing strategy
 - **Unit** (Vitest): expansion schema validation (AC-001.2–001.4), rarity distribution with
