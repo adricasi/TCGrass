@@ -172,6 +172,12 @@ key and turns off root login and passwords. Keep the root session open until a s
 can `ssh <username>@<reserved-ip>` and `sudo -v`.
 
 ### 2e. GitHub (once)
+> **Current state (2026-10-11): releases are paused.** For the challenge the repository was made
+> public, so the registry secrets were deleted from GitHub, the DO token revoked and the
+> `deploy` workflow disabled. The live app keeps running. To release again, follow
+> [§ 5 → Restoring releases](#restoring-releases). The steps below describe the private mode
+> that was used until then.
+
 The repository is **private** for now (author decision, 2026-10-11). GitHub Free has no
 environment secrets or required reviewers for private repositories, so the workflow runs in
 *private mode*: repository secrets, and a release is a manual "Run workflow" on `main`.
@@ -201,6 +207,8 @@ the environment-gated workflow (ask for it, ADR 0008), branch protection and `CO
 review. Repository secrets in a public repository could be targeted by pull requests.
 
 ## 3. Release (ADR 0008)
+Paused since 2026-10-11 (see § 2e); this is how it works once restored.
+
 1. Merge to `main`. The `build` job of `deploy.yml` pushes `tcgrass-api:sha-<commit>`; wait
    until it is green.
 2. **Release = your click:** Actions → **deploy** → **Run workflow** → branch `main`, leave
@@ -308,6 +316,75 @@ self.addEventListener("activate", (event) => {
 ```
 
 It removes every cache and unregisters itself. Player secrets in localStorage are kept.
+
+## 5. Security model
+What protects the production deployment, where each secret lives, and what to do when something
+goes wrong. Report vulnerabilities as described in [SECURITY.md](../SECURITY.md).
+
+### What is exposed
+- **Internet → Droplet:** only TCP 80/443 and UDP 443, to Caddy (Cloud Firewall). Port 80 only
+  redirects to HTTPS and answers certificate challenges. The API's port 3000 is not published.
+- **SSH:** TCP 22 from your own IP only; remove the rule when you don't need it, and use
+  `harden-ssh.sh` (§ 2d) to turn off root and password logins.
+- **Containers → cloud metadata:** blocked by an iptables rule installed before Docker starts
+  (`tcgrass-metadata-block.service`), so a compromised container can't read Droplet metadata.
+- **Outbound:** the API calls only `INFERENCE_BASE_URL` (redirects refused).
+
+### Where secrets live
+| Secret | Where | Protection |
+|---|---|---|
+| Inference key (`INFERENCE_API_KEY`) | `/opt/tcgrass/.env` on the Droplet only | Mode 600; a DO *model access key* (inference only), never a DO API token; redacted from logs |
+| Registry pull credentials | `/root/.docker/config.json` on the Droplet | Mode 600, root only; **read-only**, expire after 90 days (§ 2a) |
+| Registry push token (`DO_REGISTRY_TOKEN`) | Nowhere since 2026-10-11 (deleted and revoked) | When restored: an environment secret, `main` only, with a required reviewer |
+| Player secrets | Each player's browser; the DB stores only SHA-256 hashes | Header only, never logged |
+| DuckDNS account token | Your DuckDNS account | Not used by the Droplet (static IP); it can repoint the name, so keep it private |
+
+The repository holds no secrets: `.env` is git-ignored, gitleaks runs in pre-commit and CI, and a
+full-history gitleaks scan before going public found none (2026-10-11).
+
+**Why the push token matters most:** it can push images, and the Droplet's agent deploys
+whatever `:prod` points to. Whoever holds it can run code on the server. That's why it lives
+only behind a reviewed environment, never as a plain repository secret in a public repository.
+
+### Hardening in place
+- **Containers:** the API runs as uid 1000 (fixed in `compose.yaml`, so an image can't choose
+  root), read-only root filesystem, all capabilities dropped, `no-new-privileges`, memory and
+  PID limits. Caddy is also read-only, keeping only `NET_BIND_SERVICE`.
+- **Supply chain:** images deployed by digest; Caddy and base images pinned by digest; GitHub
+  Actions pinned by commit SHA; `package-lock.json`, `npm audit` and Dependabot.
+- **Application:** strict CSP (`'self'` only), HSTS, `nosniff`, no referrer, rate limits on
+  captures, player creation, friend requests and trades; photos never stored; model output
+  validated.
+- **Cost abuse:** `INFERENCE_DAILY_CALL_LIMIT` and `CAPTURES_PER_PLAYER_PER_DAY`, plus a DO billing
+  alert.
+
+### If something goes wrong
+- **Inference key leaked or bill spiking:** set `INFERENCE_DAILY_CALL_LIMIT=0` and run
+  `tcgrass-compose up -d api` (captures stop at once); revoke the key in the DO console, create a
+  new one, put it in `.env`, restore the limit and run `tcgrass-compose up -d api` again.
+- **Registry credentials on the Droplet leaked:** they can only pull. Revoke them by creating new
+  ones (§ 2a) and check DOCR for unexpected tags.
+- **Push token leaked:** revoke it in DO → API → Tokens, check the `:prod` digest in DOCR against
+  `/opt/tcgrass/.deployed-image`, and roll back to a known-good digest if they differ.
+- **Suspected compromise of the Droplet:** take a Volume snapshot for analysis, rotate every
+  secret above, rebuild the Droplet from Ubuntu with `setup.sh`, and restore the DB from a backup
+  taken before the incident (§ 4 Restore).
+- **Lost DuckDNS name or hostname change:** see [§ Changing the hostname](#changing-the-hostname).
+
+### Restoring releases
+1. Create a DO API token with only `registry:read` + `registry:update` and an expiry date.
+2. In GitHub, create the environments `registry` and `production`, both limited to `main`, with
+   you as required reviewer on `production`; add `DO_REGISTRY_TOKEN` as an **environment**
+   secret (never a repository secret).
+3. Replace `deploy.yml` with the environment-gated version (ADR 0008; agents prepare it in
+   `.reviews/`, you review and commit it), turn on branch protection for `main` and keep
+   "Require approval for all external contributors" on in Settings → Actions.
+4. Re-enable the `deploy` workflow and release as in § 3.
+
+### Rotation calendar
+- Registry pull credentials on the Droplet: every 90 days (§ 2a).
+- Push token: before its expiry date (once restored).
+- Inference key: after the challenge, then on any suspicion.
 
 ## Local run (NFR-011)
 To run against Ollama on the laptop:
