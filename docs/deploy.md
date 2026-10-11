@@ -113,9 +113,11 @@ environment secrets or required reviewers for private repositories, so the workf
   `DO_REGISTRY_NAME=tcgrass`.
 - [ ] **Repository secret** (same page → Secrets): `DO_REGISTRY_TOKEN`, a DO API token with
   only `registry:read` + `registry:update` (the scopes DO's API reference lists for
-  `/v2/registry/docker-credentials`) and an expiry date. The workflow uses it only to mint
-  registry credentials that expire in 15–25 minutes; it never runs `docker login`, so
-  `DO_REGISTRY_USERNAME` is no longer needed (delete it). In a private repository only
+  `/v2/registry/docker-credentials`) and an expiry date. The workflow passes it to
+  `doctl registry login --expiry-seconds` (DigitalOcean's `action-doctl`, `no_auth`, token from
+  the environment), which stores registry credentials that expire in 15–25 minutes. Each login
+  creates a short-lived token that shows up under **API → Tokens** until it expires; that is
+  expected. `DO_REGISTRY_USERNAME` is no longer needed (delete it). In a private repository only
   collaborators (you) can run workflows that read it; **keep it that way** (no other
   collaborators with write access). The workflow refuses to run if the repository is public.
 - [ ] **Branch protection** on `main` if your plan offers it for private repositories.
