@@ -8,9 +8,10 @@ name: deploy
 #   agent notices within a minute and deploys it by digest. GitHub never connects to the Droplet.
 # Rollback: "Run workflow" with an older commit of main. During the field test: don't run it.
 #
-# The registry secrets are REPOSITORY secrets here, because GitHub Free has no environment
+# The DO token (DO_REGISTRY_TOKEN) is a REPOSITORY secret here, because GitHub Free has no environment
 # secrets or required reviewers for private repositories. Before making the repository public,
 # switch back to environment secrets with a required reviewer (docs/deploy.md § 2e).
+# DO_REGISTRY_USERNAME is no longer used.
 
 on:
   push:
@@ -35,18 +36,49 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      # Private mode only (repository secrets, manual release). If the repository is made public,
+      # stop until the environment-gated workflow replaces this one (docs/deploy.md § 2e).
+      - name: Refuse to run in a public repository
+        env:
+          REPO_PRIVATE: ${{ github.event.repository.private }}
+        run: |
+          if [[ "$REPO_PRIVATE" != "true" ]]; then
+            echo "deploy.yml is in private mode but the repository is public: switch to the environment-gated workflow first" >&2
+            exit 1
+          fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-      - name: Log in to DigitalOcean Container Registry
+      # The DO API token never touches disk: it is used once to mint registry-only credentials
+      # that expire after 25 minutes (longer than the job's 20-minute timeout, since BuildKit
+      # authenticates again at push time) (DO API, /v2/registry/docker-credentials; scopes
+      # registry:read + registry:update). Docker reads them from a job-private DOCKER_CONFIG, so
+      # there is no `docker login` and nothing long-lived is stored on the runner.
+      - name: Short-lived registry credentials
         env:
-          DO_REGISTRY_USERNAME: ${{ secrets.DO_REGISTRY_USERNAME }}
-          DO_REGISTRY_TOKEN: ${{ secrets.DO_REGISTRY_TOKEN }}
-        run: echo "$DO_REGISTRY_TOKEN" | docker login "$REGISTRY" -u "$DO_REGISTRY_USERNAME" --password-stdin
+          DO_TOKEN: ${{ secrets.DO_REGISTRY_TOKEN }}
+        run: |
+          config_dir="$RUNNER_TEMP/docker-config"
+          install -d -m 700 "$config_dir"
+          umask 077
+          # The header goes through stdin (printf is a shell builtin), never onto a command line.
+          printf 'header = "Authorization: Bearer %s"\n' "$DO_TOKEN" |
+            curl -fsS --max-time 30 -K - \
+              "https://api.digitalocean.com/v2/registry/docker-credentials?read_write=true&expiry_seconds=1500" \
+              -o "$config_dir/config.json"
+          jq -r '.auths[].auth' "$config_dir/config.json" | while read -r auth; do
+            echo "::add-mask::$auth"
+            echo "::add-mask::$(printf '%s' "$auth" | base64 -d | cut -d: -f2-)"
+          done
+          echo "DOCKER_CONFIG=$config_dir" >> "$GITHUB_ENV"
       # Attestations need the docker-container driver; the result is an OCI index, which the
       # Droplet's agent resolves to a digest.
       - name: Set up the image builder
-        run: docker buildx create --name release --driver docker-container --use
+        # BuildKit pinned by version and digest: it builds the production image and receives the
+        # push credentials, so it must not be a moving tag.
+        run: >-
+          docker buildx create --name release --driver docker-container --use
+          --driver-opt image=moby/buildkit:v0.33.1@sha256:cec9f139f45e93c5c69c60f8b07cfad9f43f4ef6b6a6cd917527fea5ff2e3dea
       - name: Build and push sha-${{ github.sha }}
         run: >-
           docker buildx build --pull --push
@@ -55,9 +87,9 @@ jobs:
           --label "org.opencontainers.image.source=$GITHUB_SERVER_URL/$GITHUB_REPOSITORY"
           --label "org.opencontainers.image.revision=$GITHUB_SHA"
           -t "$IMAGE:sha-$GITHUB_SHA" .
-      - name: Log out
+      - name: Remove the registry credentials
         if: always()
-        run: docker logout "$REGISTRY"
+        run: rm -rf "$RUNNER_TEMP/docker-config"
 
   release:
     # Only by hand, and only from main's workflow definition.
@@ -69,6 +101,16 @@ jobs:
       group: release-prod
       cancel-in-progress: false
     steps:
+      # Private mode only (repository secrets, manual release). If the repository is made public,
+      # stop until the environment-gated workflow replaces this one (docs/deploy.md § 2e).
+      - name: Refuse to run in a public repository
+        env:
+          REPO_PRIVATE: ${{ github.event.repository.private }}
+        run: |
+          if [[ "$REPO_PRIVATE" != "true" ]]; then
+            echo "deploy.yml is in private mode but the repository is public: switch to the environment-gated workflow first" >&2
+            exit 1
+          fi
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
@@ -88,11 +130,27 @@ jobs:
             exit 1
           fi
           echo "sha=$commit" >> "$GITHUB_OUTPUT"
-      - name: Log in to DigitalOcean Container Registry
+      # The DO API token never touches disk: it is used once to mint registry-only credentials
+      # that expire after 15 minutes (DO API, /v2/registry/docker-credentials; scopes
+      # registry:read + registry:update). Docker reads them from a job-private DOCKER_CONFIG, so
+      # there is no `docker login` and nothing long-lived is stored on the runner.
+      - name: Short-lived registry credentials
         env:
-          DO_REGISTRY_USERNAME: ${{ secrets.DO_REGISTRY_USERNAME }}
-          DO_REGISTRY_TOKEN: ${{ secrets.DO_REGISTRY_TOKEN }}
-        run: echo "$DO_REGISTRY_TOKEN" | docker login "$REGISTRY" -u "$DO_REGISTRY_USERNAME" --password-stdin
+          DO_TOKEN: ${{ secrets.DO_REGISTRY_TOKEN }}
+        run: |
+          config_dir="$RUNNER_TEMP/docker-config"
+          install -d -m 700 "$config_dir"
+          umask 077
+          # The header goes through stdin (printf is a shell builtin), never onto a command line.
+          printf 'header = "Authorization: Bearer %s"\n' "$DO_TOKEN" |
+            curl -fsS --max-time 30 -K - \
+              "https://api.digitalocean.com/v2/registry/docker-credentials?read_write=true&expiry_seconds=900" \
+              -o "$config_dir/config.json"
+          jq -r '.auths[].auth' "$config_dir/config.json" | while read -r auth; do
+            echo "::add-mask::$auth"
+            echo "::add-mask::$(printf '%s' "$auth" | base64 -d | cut -d: -f2-)"
+          done
+          echo "DOCKER_CONFIG=$config_dir" >> "$GITHUB_ENV"
       - name: Point :prod at sha-${{ steps.commit.outputs.sha }}
         env:
           SHA: ${{ steps.commit.outputs.sha }}
@@ -104,6 +162,6 @@ jobs:
           fi
           docker buildx imagetools create -t "$IMAGE:prod" "$IMAGE:sha-$SHA"
           docker buildx imagetools inspect "$IMAGE:prod" --format '{{json .Manifest}}' | jq -r '"released digest: \(.digest)"'
-      - name: Log out
+      - name: Remove the registry credentials
         if: always()
-        run: docker logout "$REGISTRY"
+        run: rm -rf "$RUNNER_TEMP/docker-config"
