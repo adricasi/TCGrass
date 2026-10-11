@@ -27,15 +27,6 @@ illustrated card for your binder. Then trade your finds with friends.
 
 ---
 
-## Demo Video
-
-<p align="center">
-  <a href="https://youtu.be/evgKfBRZh10">
-    <img src="https://img.youtube.com/vi/evgKfBRZh10/maxresdefault.jpg" alt="Watch the TCGrass demo on YouTube" width="720">
-  </a>
-  <br>
-</p>
-
 ## Contents
 - [Why TCGrass](#why-tcgrass)
 - [Features](#features)
@@ -52,6 +43,7 @@ illustrated card for your binder. Then trade your finds with friends.
 - [Privacy and security](#privacy-and-security)
 - [Contributing](#contributing)
 - [License and credits](#license-and-credits)
+- [Demo video](#demo-video)
 
 ## Why TCGrass
 Collecting cards is fun; scrolling past them is not. TCGrass flips it around: the cards live
@@ -290,3 +282,13 @@ Contributions are welcome: new decks, bug fixes, accessibility improvements and 
   [docs/digitalocean.md](docs/digitalocean.md).
 - **Built with AI assistance:** developed spec-first with Claude Code as the coding agent and
   Gemini as a reviewer; every change was reviewed and tested by a human.
+
+## Demo video
+
+<p align="center">
+  <a href="https://youtu.be/evgKfBRZh10">
+    <img src="https://img.youtube.com/vi/evgKfBRZh10/maxresdefault.jpg" alt="Watch the TCGrass demo on YouTube" width="720">
+  </a>
+  <br>
+</p>
+
