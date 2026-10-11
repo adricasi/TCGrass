@@ -1,4 +1,4 @@
-# HTTPS for PUBLIC_HOSTNAME (e.g. 203-0-113-7.sslip.io), certificate from Let's Encrypt;
+# HTTPS for PUBLIC_HOSTNAME (e.g. tcgrass.duckdns.org or 203-0-113-7.sslip.io), certificate from Let's Encrypt;
 # `localhost` uses Caddy's internal CA. Plain HTTP is redirected to HTTPS with 308 (NFR-001).
 # Security headers are set by the API only (design.md § Security design).
 {$PUBLIC_HOSTNAME} {
