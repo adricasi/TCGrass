@@ -224,7 +224,7 @@ challenge*; this milestone replaces it.
     decimal hours, refused capture doesn't extend it). Tests run with the cooldown off unless a
     test sets it (`testApp` default 0).
 
-- [ ] T-020: Reveal animation and visual polish (timeboxed: 1.5 h)
+- [~] T-020: Reveal animation and visual polish (timeboxed: 1.5 h)
   - Estimate: 1.5 h, hard stop
   - Requirements: REQ-006 (AC-006.6), NFR-010
   - Depends on: T-005; start only once the deployed build works on a phone (T-002b)
@@ -237,6 +237,16 @@ challenge*; this milestone replaces it.
   - Done when: UI tests for AC-006.6 pass (skip on tap; no animation under reduced motion);
     existing UI tests pass; 👤 checked on Chrome Android and Safari iOS; before/after
     screenshots saved for the post.
+  - Result (2026-10-11): agent part done; waiting on 👤 phone checks and screenshots. Entry
+    animation in `style.css` (`entry-flip` 700 ms for Common/Rare; `entry-spin-glow` 300 ms delay +
+    1,100 ms for Epic/Legendary), only under `.reveal-entering`; a tap or Enter/Space removes it
+    (jumps to the end); the dismiss button is hidden until then; a 1,400 ms fallback ends it if
+    `animationend` never fires; none under reduced motion (JS and CSS). Logic in
+    `web/src/reveal-entry.ts`. Visual pass: colour/spacing tokens on `:root`, a zero-specificity
+    base button (44 px touch target, focus ring), accent shutter and dismiss buttons, persistent
+    glow on foil cards. UI tests follow the project's pattern (pure module + stylesheet checks)
+    rather than @testing-library/preact, which isn't installed. 471 tests. Review: code-reviewer,
+    no Blockers; Should-fix applied.
 
 ## Milestone 5: Field test and ship (Sat 10-10 – Sun 10-11)
 - [~] T-023: Releases through DOCR pulled by the Droplet (added 2026-10-11, ADR 0008)
