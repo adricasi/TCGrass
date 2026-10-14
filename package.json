@@ -30,17 +30,17 @@
     "seed:prod": "node dist/server/seed-cli.js"
   },
   "devDependencies": {
-    "@eslint/js": "^9.0.0",
+    "@eslint/js": "^10.0.1",
     "@preact/preset-vite": "^2.10.6",
     "@testing-library/preact": "^3.2.4",
     "@types/better-sqlite3": "^9.6.0",
-    "@types/node": "^22.0.0",
+    "@types/node": "^26.6.5",
     "@vitest/coverage-v8": "^5.0.3",
-    "eslint": "^9.0.0",
+    "eslint": "^10.12.0",
     "jsdom": "^30.1.2",
-    "prettier": "^3.0.0",
+    "prettier": "^3.9.10",
     "tsx": "^4.23.15",
-    "typescript": "^5.6.0",
+    "typescript": "^7.0.2",
     "typescript-eslint": "^8.0.0",
     "vite": "^8.3.4",
     "vitest": "^5.0.3"
@@ -52,7 +52,7 @@
     "pino": "^10.4.0",
     "preact": "^11.0.1",
     "yaml": "^2.9.1",
-    "zod": "^4.6.5"
+    "zod": "^4.6.6"
   },
   "allowScripts": {
     "better-sqlite3@13.0.3": true,
