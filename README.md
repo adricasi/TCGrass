@@ -19,6 +19,7 @@ illustrated card for your binder. Then trade your finds with friends.
 [![Touch Grass](https://img.shields.io/badge/theme-Touch%20Grass-4f6b3a)](https://dev.to/challenges/hf26)
 
 [**Play now →** tcgrass.duckdns.org](https://tcgrass.duckdns.org/) ·
+[Video Demo](https://www.youtube.com/watch?v=evgKfBRZh10) ·
 [How it works](#how-it-works) · [Gemma](docs/gemma.md) · [DigitalOcean](docs/digitalocean.md) ·
 [Run it yourself](#run-it-yourself) ·
 [Make your own deck](docs/expansions.md) · [Contributing](CONTRIBUTING.md)
