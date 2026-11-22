@@ -18,13 +18,10 @@ illustrated card for your binder. Then trade your finds with friends.
 [![#hf26challenge](https://img.shields.io/badge/DEV-%23hf26challenge-0A0A0A?logo=devdotto&logoColor=white)](https://dev.to/t/hf26challenge)
 [![Touch Grass](https://img.shields.io/badge/theme-Touch%20Grass-4f6b3a)](https://dev.to/challenges/hf26)
 
-[**Play now →** tcgrass.duckdns.org](https://tcgrass.duckdns.org/) ·
 [Video Demo](https://www.youtube.com/watch?v=evgKfBRZh10) ·
 [How it works](#how-it-works) · [Gemma](docs/gemma.md) · [DigitalOcean](docs/digitalocean.md) ·
 [Run it yourself](#run-it-yourself) ·
 [Make your own deck](docs/expansions.md) · [Contributing](CONTRIBUTING.md)
-
-<img src="docs/images/qr.png" alt="QR code that opens TCGrass at tcgrass.duckdns.org. Scan it with your phone camera to play: free, no app store, no account" width="360">
 
 </div>
 
